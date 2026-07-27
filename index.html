@@ -1,282 +1,1452 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>設備維護師日巡系統 V7-POC</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;background:#f5f5f7;color:#1d1d1f;display:flex;flex-direction:column;align-items:center;padding:20px}
-.card{background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);width:100%;max-width:430px;padding:24px;margin:0 auto}
-h1{font-size:1.35rem;font-weight:700;margin-bottom:8px;color:#1d1d1f}
-.subtitle{font-size:.8125rem;color:#86868b;margin-bottom:20px}
-.section{margin-bottom:16px}
-label{display:block;font-size:.8125rem;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-input[type=file]{width:100%;padding:12px;font-size:.9375rem;border:2px solid #e5e5ea;border-radius:12px;background:#fff;margin-bottom:8px}
-.btn{display:block;width:100%;padding:14px;font-size:1rem;font-weight:600;color:#fff;background:#0071e3;border:none;border-radius:12px;cursor:pointer;margin-bottom:8px}
-.btn:active{background:#005bb5}
-.btn.orange{background:#ff9500}
-.btn.orange:active{background:#e08600}
-.btn.green{background:#34c759}
-.btn.green:active{background:#28a745}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.status{margin-top:12px;padding:12px;background:#f9f9fb;border-radius:12px;font-size:.9375rem;color:#86868b;min-height:48px;display:flex;align-items:center;justify-content:center;text-align:center}
-.status.ok{color:#34c759;background:#f0fff4}
-.status.err{color:#dc3545;background:#fff0f0}
-.progress{margin-top:8px;height:4px;background:#e5e5ea;border-radius:2px;overflow:hidden}
-.progress-bar{height:100%;background:#0071e3;transition:width .3s;width:0}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>設備維護師日巡系統 V7</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;overscroll-behavior-x:none;overscroll-behavior-y:contain}
+    .card{background:#fff;border-radius:0;box-shadow:none;width:100%;max-width:430px;height:100vh;max-height:100vh;display:flex;flex-direction:column;padding:8px 16px;margin:0 auto;overflow:hidden}
+    h1{font-size:1.35rem;font-weight:700;margin-bottom:6px;color:#1d1d1f}
+    .subtitle{font-size:.8125rem;color:#86868b;margin-bottom:14px}
+    label{display:block;font-size:.8125rem;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    select{width:100%;padding:14px 16px;font-size:1rem;font-family:inherit;border:2px solid #e5e5ea;border-radius:12px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%2386868b' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 16px center;appearance:none;-webkit-appearance:none;color:#1d1d1f;cursor:pointer;transition:border-color .15s ease}
+    select:focus{outline:none;border-color:#0071e3;box-shadow:0 0 0 3px rgba(0,113,227,0.15)}
+    .result{margin-top:20px;padding:16px;background:#f9f9fb;border-radius:12px;text-align:center;min-height:56px;display:flex;align-items:center;justify-content:center}
+    .result .placeholder{color:#aeaeb2;font-size:.9375rem}
+    .result .selected{color:#1d1d1f;font-size:1.0625rem;font-weight:600}
+    .result .code{color:#86868b;font-size:.8125rem;font-weight:400;margin-left:8px}
+    .groups{margin-top:20px}
+    .groups-title,.devices-title,.abnormals-title,.camera-title{font-size:.8125rem;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+    .group-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .group-btn,.device-btn{padding:12px 8px;font-family:inherit;font-weight:500;color:#1d1d1f;background:#f9f9fb;border:2px solid #e5e5ea;border-radius:10px;cursor:pointer;transition:border-color .15s ease,background .15s ease;text-align:center;-webkit-tap-highlight-color:transparent}
+    .group-btn{font-size:.875rem;font-weight:600;padding:14px 8px;border-radius:12px}
+    .device-btn{font-size:.8125rem;word-break:break-word}
+    .group-btn:hover,.device-btn:hover{border-color:#0071e3;background:#eaf2fd}
+    .group-btn:active,.device-btn:active{background:#d0e4f9}
+    .group-btn.selected,.device-btn.selected{border-color:#0071e3;background:#0071e3;color:#fff}
+    .group-result,.device-result,.abnormal-result{margin-top:12px;padding:10px 12px;background:#f9f9fb;border-radius:12px;text-align:center;display:flex;align-items:center;justify-content:center;font-size:.875rem;color:#86868b}
+    .group-result{margin-top:16px;padding:12px;min-height:44px;font-size:.9375rem}
+    .device-result,.abnormal-result{min-height:40px}
+    .abnormal-result{color:#1d1d1f;font-weight:600}
+    .devices,.abnormals,.camera{margin-top:16px;display:none}
+    .device-grid,.abnormal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .abnormal-btn{padding:10px 8px;font-size:.8125rem;font-family:inherit;font-weight:500;color:#fff;border:2px solid transparent;border-radius:10px;cursor:pointer;transition:opacity .15s ease,transform .15s ease,box-shadow .15s ease;text-align:center;word-break:break-word;-webkit-tap-highlight-color:transparent}
+    .abnormal-btn:hover{opacity:.85}
+    .abnormal-btn:active{transform:scale(.97)}
+    .abnormal-btn.selected{box-shadow:0 0 0 3px #1d1d1f;transform:scale(1.03)}
+    .abnormal-btn.critical{background:#dc3545}
+    .abnormal-btn.high{background:#fd7e14}
+    .abnormal-btn.medium{background:#0d6efd}
+    .abnormal-btn.low{background:#6c757d}
+    .abnormal-btn.green{background:#28a745}
+    .camera-actions,.export-actions{display:flex;gap:10px}
+    .camera-actions{margin-bottom:12px}
+    .export-actions{margin-top:14px;flex-wrap:wrap}
+    .camera-btn,.export-btn{flex:1;padding:12px 8px;font-size:.9375rem;font-family:inherit;font-weight:600;color:#fff;border:none;border-radius:12px;cursor:pointer;transition:opacity .15s ease;-webkit-tap-highlight-color:transparent}
+    .camera-btn{background:#0071e3}
+    .camera-btn.album,.export-btn.save{background:#34c759}
+    .export-btn.share{background:#0071e3}
+    .camera-btn:hover,.export-btn:hover{opacity:.85}
+    .camera-btn:active,.export-btn:active{opacity:.7}
+    .photo-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .photo-item{position:relative;width:80px;height:80px;border-radius:10px;overflow:hidden;border:2px solid #e5e5ea}
+    .photo-item img{width:100%;height:100%;object-fit:cover;display:block}
+    .photo-item .photo-del{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:none;font-size:12px;line-height:22px;text-align:center;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
+    footer{margin-top:auto;padding:8px 0;font-size:.75rem;color:#aeaeb2;text-align:center;flex-shrink:0}
+
+    /* Editor Overlay */
+    #editor-overlay{position:fixed;inset:0;z-index:1000;background:rgba(15,14,23,.95);display:none;flex-direction:column;touch-action:none}
+    #editor-overlay.active{display:flex}
+    .editor-toolbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px;background:#1a1a2e;border-bottom:1px solid #2e2e4a;flex-shrink:0}
+    .tool-btn{width:100%;height:40px;border-radius:8px;border:1px solid #2e2e4a;background:#22223a;color:#fffffe;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .tool-btn.active{background:#ff8906;border-color:#ff8906;color:#000}
+    .tool-controls{display:flex;gap:8px;align-items:center;grid-column:1/-1;justify-content:center;padding-top:4px}
+    .tool-color{width:36px;height:36px;border-radius:8px;border:2px solid #2e2e4a;cursor:pointer;flex-shrink:0}
+    .tool-range{width:80px;flex-shrink:0}
+    #fabric-container{flex:1;overflow:hidden;position:relative}
+    .editor-bottom-bar{display:flex;gap:10px;padding:12px;background:#1a1a2e;border-top:1px solid #2e2e4a;flex-shrink:0}
+    .btn{padding:12px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer}
+    .wizard-prev-btn{padding:11px 28px;font-size:.9375rem;font-family:inherit;font-weight:600;color:#0071e3;background:#fff;border:2px solid #0071e3;border-radius:12px;cursor:pointer;transition:opacity .15s ease}
+    .wizard-prev-btn:hover{opacity:.85}
+    .btn-primary{background:#ff8906;color:#000;flex:1}
+    .btn-secondary{background:#1a1a2e;color:#fffffe;border:1px solid #2e2e4a}
+    .btn-danger{background:#dc3545;color:#fff}
+
+    /* Preview Overlay */
+    #preview-overlay{position:fixed;inset:0;z-index:999;background:rgba(15,14,23,.95);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+    #preview-overlay.active{display:flex}
+    .preview-image{max-width:100%;max-height:60vh;border-radius:12px;object-fit:contain}
+    .preview-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;justify-content:center}
+    .preview-btn{padding:14px 24px;border-radius:12px;border:none;font-size:16px;font-weight:600;cursor:pointer;color:#fff}
+    .preview-btn.edit-btn{background:#ff8906;color:#000}
+    .preview-btn.confirm-btn{background:#34c759}
+    .preview-btn.discard-btn{background:#dc3545}
+
+    /* Wizard Layout */
+    .wizard-progress{display:flex;justify-content:center;align-items:center;gap:10px;padding:8px 0 12px;flex-shrink:0}
+    .wiz-dot{width:10px;height:10px;border-radius:50%;background:#d2d2d7;transition:all .3s ease}
+    .wiz-dot.active{background:#0071e3;width:12px;height:12px;box-shadow:0 0 0 3px rgba(0,113,227,0.2)}
+    .wiz-dot.done{background:#34c759}
+    .wizard-page{display:none;flex:1;overflow-y:auto;flex-direction:column;padding:0 4px 8px;-webkit-overflow-scrolling:touch}
+    .wizard-page.active{display:flex}
+
+    /* V6 New: Classification page styles */
+    .classified-photo-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;flex-shrink:0;scroll-behavior:smooth}
+    .classified-photo-strip .photo-thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:3px solid #e5e5ea;flex-shrink:0;cursor:pointer;transition:border-color .15s ease}
+    .classified-photo-strip .photo-thumb.active{border-color:#0071e3;box-shadow:0 0 0 2px rgba(0,113,227,0.3)}
+    .classified-photo-strip .photo-thumb.classified{border-color:#34c759}
+    .classified-photo-strip .photo-thumb img{width:100%;height:100%;object-fit:cover}
+    .classified-photo-strip .photo-thumb .check-mark{position:absolute;bottom:2px;right:2px;background:#34c759;color:#fff;width:18px;height:18px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center}
+    .classified-photo-strip .photo-thumb .thumb-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;text-align:center;padding:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .current-photo-preview{text-align:center;padding:8px 0;flex-shrink:0}
+    .current-photo-preview img{max-width:100%;max-height:160px;border-radius:10px;object-fit:contain;border:2px solid #e5e5ea}
+    .current-photo-label{margin-top:4px;font-size:.75rem;color:#86868b}
+
+    .classify-section{margin-top:8px}
+    .classify-section .section-label{font-size:.8125rem;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+
+    .custom-abnormal-btn{padding:10px 8px;font-size:.8125rem;font-family:inherit;font-weight:500;color:#86868b;background:#fff;border:2px dashed #aeaeb2;border-radius:10px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:border-color .15s ease,color .15s ease}
+    .custom-abnormal-btn:hover{border-color:#0071e3;color:#0071e3}
+    .custom-abnormal-btn.selected{border-color:#0071e3;color:#0071e3;background:#eaf2fd;border-style:solid}
+
+    .confirm-classify-btn{width:100%;padding:14px;font-size:1rem;font-family:inherit;font-weight:700;color:#fff;background:#0071e3;border:none;border-radius:12px;cursor:pointer;margin-top:14px;transition:opacity .15s ease}
+    .confirm-classify-btn:disabled{opacity:.4;cursor:not-allowed}
+    .confirm-classify-btn:hover:not(:disabled){opacity:.85}
+
+    .classify-progress{text-align:center;font-size:.8125rem;color:#86868b;margin-bottom:8px;padding:6px 12px;background:#f0f8ff;border-radius:8px}
+    .classify-progress .progress-count{font-weight:700;color:#0071e3}
+
+    /* Summary page */
+    .wizard-summary{background:#f9f9fb;border-radius:12px;padding:16px;margin-bottom:16px}
+    .summary-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:.875rem;border-bottom:1px solid #e5e5ea}
+    .summary-item:last-child{border-bottom:none}
+    .summary-label{color:#86868b;font-size:.8125rem}
+    .summary-val{font-weight:600;color:#1d1d1f;text-align:right}
+    .summary-section{margin-top:16px}
+    .summary-section .section-title{font-size:.875rem;font-weight:700;color:#1d1d1f;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #0071e3}
+    .photo-summary-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f5}
+    .photo-summary-item img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0}
+    .photo-summary-info{flex:1;min-width:0}
+    .photo-summary-info .psi-name{font-size:.8125rem;font-weight:600;color:#1d1d1f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .photo-summary-info .psi-detail{font-size:.75rem;color:#86868b}
+    .no-photos-hint{text-align:center;color:#aeaeb2;padding:20px;font-size:.875rem}
+
+    .report-status{margin-top:8px;text-align:center;font-size:.875rem;display:none;padding:10px;border-radius:8px}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
+
 <div class="card">
-<h1>📊 日巡報告 V7-POC</h1>
-<div class="subtitle">ExcelJS 瀏覽器端完美置中測試</div>
 
-<div class="section">
-<label>1. 選擇 Excel 模板 (.xlsx)</label>
-<input type="file" id="templateInput" accept=".xlsx">
+  <!-- Progress Dots -->
+  <div class="wizard-progress" id="wizProgress">
+    <span class="wiz-dot active" data-step="1"></span>
+    <span class="wiz-dot" data-step="2"></span>
+    <span class="wiz-dot" data-step="3"></span>
+    <span class="wiz-dot" data-step="4"></span>
+  </div>
+
+  <!-- ===== Page 1: 選餐廳 ===== -->
+  <div class="wizard-page active" id="wiz-page-1">
+    <h1>🍽️ Step 1：選擇餐廳</h1>
+    <p class="subtitle">選擇後自動進入拍照程序</p>
+
+    <label for="restaurantSelect">餐廳名稱</label>
+    <select id="restaurantSelect">
+      <option value="">— 請選擇 —</option>
+    </select>
+
+    <div class="result" id="result">
+      <span class="placeholder">尚未選擇</span>
+    </div>
+
+    <footer>pwa-v7</footer>
+  </div>
+
+  <!-- ===== Page 2: 拍照 / 編輯 ===== -->
+  <div class="wizard-page" id="wiz-page-2">
+    <h1>📸 Step 2：拍照紀錄</h1>
+    <p class="subtitle">拍照或從相簿選取，點擊照片可編輯</p>
+
+    <div class="camera" style="display:block;margin-top:0;">
+      <div class="camera-actions">
+        <label for="cameraInput" class="camera-btn" style="flex:1;display:flex;align-items:center;justify-content:center">📷 拍照</label>
+        <input type="file" accept="image/*" capture="environment" id="cameraInput" style="display:none">
+        <label class="camera-btn album" style="flex:1;display:flex;align-items:center;justify-content:center">
+          🖼️ 從相簿選取
+          <input type="file" accept="image/*" id="albumInput" style="display:none">
+        </label>
+      </div>
+
+      <p id="photoHint" style="text-align:center;color:#aeaeb2;font-size:.8125rem;margin:12px 0;">尚未拍攝照片</p>
+      <div class="photo-grid" id="photoGrid"></div>
+
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn" style="flex:1;padding:12px;font-size:.9375rem;font-family:inherit;font-weight:600;color:#0071e3;background:#fff;border:2px solid #0071e3;border-radius:12px;cursor:pointer;" onclick="goToPage(1)">← 上一步</button>
+        <button class="btn btn-primary" id="gotoClassifyBtn" style="flex:1;display:none;font-family:inherit;" onclick="startClassify()">下一步：分類照片 →</button>
+      </div>
+    </div>
+
+    <footer>pwa-v7</footer>
+  </div>
+
+  <!-- ===== Page 3: 選設備 / 異常 ===== -->
+  <div class="wizard-page" id="wiz-page-3">
+    <h1>🏷️ Step 3：分類照片</h1>
+    <p class="subtitle">為每張照片選擇設備與異常狀態</p>
+
+    <!-- Photo strip -->
+    <div class="classified-photo-strip" id="classifyPhotoStrip"></div>
+
+    <!-- Progress -->
+    <div class="classify-progress" id="classifyProgress">
+      進度：<span class="progress-count" id="progressCount">0/0</span>
+    </div>
+
+    <!-- Current photo preview -->
+    <div class="current-photo-preview" id="currentPhotoPreview" style="display:none;">
+      <img id="currentPhotoImg" src="" alt="當前照片">
+      <div class="current-photo-label" id="currentPhotoLabel"></div>
+    </div>
+    <p id="noPhotosToClassify" style="text-align:center;color:#aeaeb2;padding:20px;">沒有照片需要分類</p>
+
+    <!-- Sub-page 1: 設備群組 -->
+    <div class="classify-subpage" id="classifySubpageGroups">
+      <p class="section-label">📂 設備群組</p>
+      <div class="group-grid" id="classifyGroupGrid"></div>
+      <div class="group-result" id="classifyGroupResult" style="display:none;"></div>
+    </div>
+
+    <!-- Sub-page 2: 設備列表 -->
+    <div class="classify-subpage" id="classifySubpageDevices" style="display:none;">
+      <p class="section-label">🔧 設備列表</p>
+      <div class="device-grid" id="classifyDeviceGrid"></div>
+      <div class="device-result" id="classifyDeviceResult" style="display:none;"></div>
+      <button class="wizard-prev-btn" style="margin-top:10px;width:100%;font-size:.8125rem;padding:8px 16px;" onclick="showClassifySubPage(1)">← 回群組列表</button>
+    </div>
+
+    <!-- Sub-page 3: 異常狀態 -->
+    <div class="classify-subpage" id="classifySubpageAbnormals" style="display:none;">
+      <p class="section-label">⚠️ 異常狀態</p>
+      <div class="abnormal-grid" id="classifyAbnormalGrid"></div>
+      <div class="abnormal-result" id="classifyAbnormalResult" style="display:none;"></div>
+      <button class="custom-abnormal-btn" id="customAbnormalBtn" style="width:100%;margin-top:8px;" onclick="customAbnormal()">
+        ✏️ 自訂異常說明
+      </button>
+      <button class="wizard-prev-btn" style="margin-top:10px;width:100%;font-size:.8125rem;padding:8px 16px;" onclick="showClassifySubPage(2)">← 回設備列表</button>
+    </div>
+
+    <!-- V6: 雙按鈕區 — 繼續下一張(永遠) + 完成去預覽(allDone) -->
+    <div id="classifyActionBar" style="display:none; gap:10px; margin-top:8px;">
+      <button class="confirm-classify-btn" id="continueNextBtn" style="flex:1; width:auto; margin-top:0; background:#0071e3;" onclick="continueNextPhoto()">
+        📷 繼續下一張
+      </button>
+      <button class="confirm-classify-btn" id="goToPreviewBtn" style="flex:1; width:auto; margin-top:0; display:none; background:#34c759;" onclick="goToPage(4)">
+        📋 完成，去預覽
+      </button>
+    </div>
+
+    <div style="padding:12px 0 8px;display:flex;justify-content:center;gap:10px;">
+      <button class="wizard-prev-btn" onclick="goToPage(2)">← 上一步</button>
+    </div>
+
+    <footer>pwa-v7</footer>
+  </div>
+
+  <!-- ===== Page 4: 匯出報告 ===== -->
+  <div class="wizard-page" id="wiz-page-4">
+    <h1>📊 Step 4：匯出報告</h1>
+    <p class="subtitle">確認資料並產出日巡報告</p>
+
+    <div class="wizard-summary" id="wizardSummary">
+      <div class="summary-item"><span class="summary-label">餐廳</span><span class="summary-val" id="sumRestaurant">—</span></div>
+      <div class="summary-item"><span class="summary-label">照片總數</span><span class="summary-val" id="sumPhotos">0</span></div>
+      <div class="summary-item"><span class="summary-label">已分類</span><span class="summary-val" id="sumClassified" style="color:#34c759;">0</span></div>
+    </div>
+
+    <div class="summary-section" id="photoSummarySection" style="overflow-y:auto; max-height:40vh;">
+      <p class="section-title">📋 分類明細</p>
+      <div id="photoSummaryList"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+      <button class="wizard-prev-btn" onclick="goToPage(2)" style="flex:1;">← 回拍照</button>
+      <label for="albumInput4" class="wizard-prev-btn" style="flex:1;text-align:center;cursor:pointer;">🖼️ 從相簿選取</label>
+      <input type="file" accept="image/*" id="albumInput4" style="display:none;">
+    </div>
+
+    <div class="export-actions" id="exportActions" style="display:flex;">
+      <button class="export-btn share" id="shareAllBtn">💾 儲存/分享全部</button>
+    </div>
+    <div class="export-actions" id="reportActions" style="display:flex;">
+      <button class="export-btn" id="generateReportBtn" style="background:#ff9500;flex:1;">📊 產出日巡報告</button>
+    </div>
+    <div class="report-status" id="reportStatus"></div>
+
+    <footer>pwa-v7</footer>
+  </div>
+
 </div>
 
-<div class="section">
-<label>2. 選擇照片 (可多選)</label>
-<input type="file" id="photoInput" accept="image/*" multiple>
+<!-- Editor Overlay -->
+<div id="editor-overlay">
+  <div class="editor-toolbar">
+    <button class="tool-btn" onclick="setTool('pen')" id="btnPen">✏️</button>
+    <button class="tool-btn" onclick="setTool('line')" id="btnLine">📏</button>
+    <button class="tool-btn" onclick="setTool('arrow')" id="btnArrow">➡️</button>
+    <button class="tool-btn" onclick="addText()">📝</button>
+    <button class="tool-btn" onclick="setTool('circle')" id="btnCircle">⭕</button>
+    <button class="tool-btn" onclick="setTool('rect')" id="btnRect">□</button>
+    <button class="tool-btn" onclick="setTool('crop')" id="btnCrop">✂️</button>
+    <button class="tool-btn" onclick="undo()">↩️</button>
+  </div>
+  <div class="tool-controls">
+    <input type="color" id="editorColor" value="#ff0000" class="tool-color">
+    <input type="range" id="editorSize" min="1" max="20" value="4" class="tool-range">
+  </div>
+  <div id="fabric-container"></div>
+  <div class="editor-bottom-bar">
+    <button class="btn btn-secondary" onclick="closeEditor()">✕ 取消</button>
+    <button class="btn btn-primary" onclick="saveEditor()">✓ 完成</button>
+  </div>
 </div>
 
-<div class="section">
-<label>3. 目標儲存格（例如 K3）</label>
-<input type="text" id="targetCell" value="K3" style="width:100%;padding:12px;font-size:1rem;border:2px solid #e5e5ea;border-radius:12px">
+<!-- Preview Overlay -->
+<div id="preview-overlay">
+  <img id="previewImage" class="preview-image" src="" alt="預覽">
+  <div class="preview-actions">
+    <button class="preview-btn edit-btn" onclick="editPrev()">✏️ 編輯</button>
+    <button class="preview-btn confirm-btn" onclick="keepPhoto()">✓ 加入</button>
+    <button class="preview-btn discard-btn" onclick="tossPhoto()">✕ 捨棄</button>
+  </div>
 </div>
 
-<button class="btn green" id="generateBtn" disabled>🚀 生成報告（完美置中）</button>
-
-<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
-<div class="status" id="status">請依序選擇模板與照片</div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
-var _templateBuffer = null;
-var _photos = [];
+// ============================================================
+// MODULE 1: DATA DICTIONARY (數據定義模組)
+// ============================================================
+var RS = [
+  { code:'S012', name:'永和' },{ code:'S022', name:'新店北新一' },{ code:'S085', name:'永和中正' },
+  { code:'S099', name:'中和' },{ code:'S133', name:'新店北新二' },{ code:'S197', name:'新店安康' },
+  { code:'S203', name:'中和中山' },{ code:'S209', name:'中和興南' },{ code:'S242', name:'永和得和' },
+  { code:'S257', name:'永和中山' },{ code:'S356', name:'永和永安' },{ code:'S446', name:'板橋府中' },
+  { code:'S471', name:'中和景新' },{ code:'S490', name:'新店中正二' },{ code:'S510', name:'新店中正三' },
+  { code:'S569', name:'永和永利' },{ code:'S600', name:'新店北新三' },{ code:'S620', name:'中和建一' }
+];
 
-// EMU constants
-var EMU_PER_CM = 360000;
-var EMU_PER_PT = 12700;
+var DG = {
+  fry:['高效預熱機/保溫箱','炸雞保溫箱','高效能麵包機','炸爐(炸區&炸雞區)','炸爐(薯站)','煎爐'],
+  cold:['煎區肉櫃冰箱','炸區掛式(左)','工作檯冰箱/炸區掛式(右)','調理台下方冰箱','服務區冷藏冰箱','冷凍庫','冷藏庫','冷凍薯條分配器'],
+  freeze:['室外機 冷凍冷藏製冰飲料','聖代機','製冰機'],
+  hvac:['HVAC 室外機','HVAC 溫控檢視','HVAC 濾網'],
+  drain:['排煙設備','截油槽','截油分配器','陰井'],
+  clean:['清洗機','照明&廚房設備'],
+  tool:['開罐器','蕃茄切片器'],
+  safety:['CO2 偵測器','瓦斯遮斷閥','病媒'],
+  other:['其他','資料整理']
+};
+
+var DGS = [
+  { name:'油炸區', key:'fry', icon:'🔥' },{ name:'冷藏區', key:'cold', icon:'❄️' },
+  { name:'冷凍製冰', key:'freeze', icon:'🧊' },{ name:'空調HVAC', key:'hvac', icon:'🌬️' },
+  { name:'排汙水處理', key:'drain', icon:'💧' },{ name:'清洗設備', key:'clean', icon:'🧼' },
+  { name:'刀具器具', key:'tool', icon:'🔪' },{ name:'安全偵測', key:'safety', icon:'⚠️' },
+  { name:'其他', key:'other', icon:'📋' }
+];
+
+var AT = {
+  '高效預熱機/保溫箱':[{label:'密封條破損',severity:'high'},{label:'門無法密合',severity:'high'},{label:'出水異常',severity:'medium'},{label:'箱體破損',severity:'high'}],
+  '炸雞保溫箱':[{label:'密封條破損',severity:'high'},{label:'風扇髒污',severity:'medium'},{label:'調節閥刻度不正確',severity:'medium'},{label:'門軸歪斜',severity:'high'}],
+  '高效能麵包機':[{label:'寬度旋鈕錯誤',severity:'medium'},{label:'鐵氟龍破損',severity:'high'},{label:'傳送帶髒污',severity:'medium'},{label:'風扇髒污',severity:'medium'}],
+  '炸爐(炸區&炸雞區)':[{label:'瓦斯漏氣',severity:'critical'},{label:'油網髒污',severity:'medium'},{label:'背板積垢',severity:'medium'},{label:'集油槽堵塞',severity:'medium'},{label:'油車不潔',severity:'low'},{label:'大金剛斷裂',severity:'high'}],
+  '炸爐(薯站)':[{label:'瓦斯漏氣',severity:'critical'},{label:'油網髒污',severity:'medium'},{label:'背板積垢',severity:'medium'},{label:'大金剛斷裂',severity:'high'}],
+  '煎爐':[{label:'抬板積垢',severity:'medium'},{label:'煙罩效能不足',severity:'high'},{label:'瓦斯管問題',severity:'high'},{label:'密封條破損',severity:'medium'}],
+  '煎區肉櫃冰箱':[{label:'上蓋未密合',severity:'high'},{label:'鰭片髒污',severity:'medium'},{label:'滴水盤積水',severity:'medium'}],
+  '炸區掛式(左)':[{label:'門墊圈破損',severity:'high'},{label:'結霜過多',severity:'medium'},{label:'鰭片髒污',severity:'medium'}],
+  '工作檯冰箱/炸區掛式(右)':[{label:'門墊圈破損',severity:'high'},{label:'結霜',severity:'medium'},{label:'鰭片髒污',severity:'medium'}],
+  '調理台下方冰箱':[{label:'門墊圈破損',severity:'high'},{label:'鰭片髒污',severity:'medium'},{label:'滴水盤積水',severity:'medium'}],
+  '服務區冷藏冰箱':[{label:'門墊圈破損',severity:'high'},{label:'結霜',severity:'medium'},{label:'鰭片髒污',severity:'medium'}],
+  '冷凍庫':[{label:'鰭片結冰',severity:'high'},{label:'排水管問題',severity:'medium'},{label:'門墊圈破損',severity:'high'},{label:'貨物堆疊不當',severity:'medium'}],
+  '冷藏庫':[{label:'鰭片結冰',severity:'high'},{label:'門墊圈破損',severity:'high'},{label:'排水管',severity:'medium'}],
+  '冷凍薯條分配器':[{label:'濾網髒污',severity:'medium'},{label:'門墊圈破損',severity:'high'}],
+  '室外機 冷凍冷藏製冰飲料':[{label:'鰭片髒污',severity:'high'},{label:'風扇異常',severity:'high'},{label:'除霜鐘異常',severity:'high'}],
+  '聖代機':[{label:'濾網髒污',severity:'medium'},{label:'滴盤髒污',severity:'low'},{label:'攪拌器晃動',severity:'medium'}],
+  '製冰機':[{label:'冰盤髒污',severity:'medium'},{label:'儲槽髒污',severity:'medium'},{label:'冰層異常',severity:'medium'}],
+  'HVAC 室外機':[{label:'外部鏽蝕',severity:'medium'},{label:'面板鬆脫',severity:'medium'},{label:'鰭片髒污',severity:'high'}],
+  'HVAC 溫控檢視':[{label:'用餐區過冷',severity:'medium'},{label:'用餐區過熱',severity:'medium'},{label:'廚房區過熱',severity:'medium'},{label:'溫控器故障',severity:'high'}],
+  'HVAC 濾網':[{label:'回風濾網髒污',severity:'medium'},{label:'空調箱濾網',severity:'high'},{label:'外氣入口',severity:'medium'}],
+  '排煙設備':[{label:'風扇異常',severity:'high'},{label:'帆布破損',severity:'high'},{label:'集油過多',severity:'medium'},{label:'風罩破洞',severity:'medium'}],
+  '截油槽':[{label:'吸油棉未換',severity:'medium'},{label:'內部髒污',severity:'medium'},{label:'戶外阻塞',severity:'high'}],
+  '截油分配器':[{label:'化油劑不足',severity:'medium'},{label:'分配器故障',severity:'high'},{label:'軟管脫落',severity:'medium'}],
+  '陰井':[{label:'浮油過多',severity:'medium'},{label:'水管阻塞',severity:'high'}],
+  '清洗機':[{label:'淋臂水垢',severity:'medium'},{label:'濾板髒污',severity:'medium'},{label:'滑門未關',severity:'low'}],
+  '照明&廚房設備':[{label:'開關機表未更新',severity:'medium'},{label:'管理組不了解',severity:'medium'},{label:'設備未按時開關',severity:'medium'}],
+  '開罐器':[{label:'刀片髒污',severity:'low'},{label:'開罐不良',severity:'medium'},{label:'推把鬆脫',severity:'medium'}],
+  '蕃茄切片器':[{label:'缺止滑墊',severity:'medium'},{label:'缺插銷',severity:'medium'},{label:'刀片變形',severity:'high'},{label:'缺件',severity:'medium'}],
+  'CO2 偵測器':[{label:'無亮燈',severity:'critical'},{label:'未維護',severity:'medium'},{label:'員工不了解',severity:'medium'}],
+  '瓦斯遮斷閥':[{label:'無亮燈',severity:'critical'},{label:'遮斷閥異常',severity:'critical'},{label:'BYPASS未關',severity:'high'}],
+  '病媒':[{label:'捕蠅燈異常',severity:'medium'},{label:'環境髒污',severity:'medium'},{label:'門窗破損',severity:'high'}],
+  '其他':[{label:'有建議事項',severity:'low'}],
+  '資料整理':[]
+};
+
+// ============================================================
+// MODULE 2: STATE MANAGEMENT (狀態管理模組)
+// ============================================================
+var _restaurant = null;       // Selected restaurant {code, name}
+var _photos = [];             // [{ dataUrl, fileName, groupKey, groupLabel, device, abnormal, classified }]
+var _currentPhotoIdx = -1;    // Currently classifying photo index
+var _currentGroupKey = null;  // Currently selected group
+var _currentGroupLabel = null;
+var _currentDevice = null;    // Currently selected device
+var _currentAbnormal = null;  // Currently selected abnormal label
+var _pendingDataUrl = null;   // Photo waiting in preview
+var _editPhotoIdx = -1;       // Index of photo being edited (-1 for new)
+var _editPhotoDataUrl = null; // DataUrl being edited
+var _photoSeq = 0;            // Sequence counter for genFN
+var _continueNextMode = false; // V6: flag for "繼續下一張" camera trigger
+var _classifySubPage = 1;       // V6 sub-page: 1=groups, 2=devices, 3=abnormals
+var _ini = false;
+
+// ============================================================
+// MODULE 3: WIZARD NAVIGATION & FLOW (導航與流程模組)
+// ============================================================
+var _wizPage = 1;
+function goToPage(n) {
+  _wizPage = n;
+  var pages = document.querySelectorAll('.wizard-page');
+  for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+  var p = document.getElementById('wiz-page-' + n);
+  if (p) p.classList.add('active');
+
+  // Progress dots
+  var dots = document.querySelectorAll('.wiz-dot');
+  for (var j = 0; j < dots.length; j++) {
+    var s = parseInt(dots[j].getAttribute('data-step'), 10);
+    dots[j].classList.remove('active', 'done');
+    if (s < n) dots[j].classList.add('done');
+    if (s === n) dots[j].classList.add('active');
+  }
+
+  // Page-specific setup
+  if (n === 3) refreshClassifyPage();
+  if (n === 4) refreshSummaryPage();
+}
+
+function prevPage() {
+  if (_wizPage > 1) goToPage(_wizPage - 1);
+}
+
+// ============================================================
+// PAGE 1: RESTAURANT SELECTION
+// ============================================================
+function initRestaurant() {
+  var s = document.getElementById('restaurantSelect');
+  for (var i = 0; i < RS.length; i++) {
+    var o = document.createElement('option');
+    o.value = RS[i].code;
+    o.textContent = RS[i].code + ' ' + RS[i].name;
+    s.appendChild(o);
+  }
+}
+
+function onRestaurantChange() {
+  var s = document.getElementById('restaurantSelect');
+  var code = s.value;
+  var re = document.getElementById('result');
+  if (!code) {
+    re.innerHTML = '<span class="placeholder">尚未選擇</span>';
+    _restaurant = null;
+    return;
+  }
+  for (var i = 0; i < RS.length; i++) {
+    if (RS[i].code === code) {
+      _restaurant = RS[i];
+      re.innerHTML = '<span class="selected">' + _restaurant.name + '</span><span class="code">' + _restaurant.code + '</span>';
+      // Auto-jump to Step 2
+      setTimeout(function(){ goToPage(2); }, 400);
+      return;
+    }
+  }
+}
+
+// ============================================================
+// MODULE 4: MEDIA PROCESSING (媒體處理模組)
+// ============================================================
+function onFileInput(e) {
+  var f = e.target.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    _pendingDataUrl = ev.target.result;
+    _editPhotoIdx = -1;
+    document.getElementById('previewImage').src = _pendingDataUrl;
+    document.getElementById('preview-overlay').classList.add('active');
+  };
+  reader.readAsDataURL(f);
+  e.target.value = '';
+}
+
+function keepPhoto() {
+  document.getElementById('preview-overlay').classList.remove('active');
+  if (_editPhotoIdx >= 0) {
+    // Editing existing photo
+    _photos[_editPhotoIdx].dataUrl = _pendingDataUrl;
+  } else {
+    // New photo
+    _photos.push({ dataUrl: _pendingDataUrl, fileName: '', groupKey: null, groupLabel: null, device: null, abnormal: null, classified: false });
+  }
+  _pendingDataUrl = null;
+  _editPhotoIdx = -1;
+  renderPhotoGrid();
+
+  // V6: Continue-next mode (triggered from "繼續下一張" on Step 3)
+  if (_continueNextMode) {
+    _continueNextMode = false;
+    if (_wizPage === 3) {
+      refreshClassifyPage();
+      if (_photos.length > 0) {
+        selectClassifyPhoto(_photos.length - 1);
+      }
+    } else {
+      startClassify();
+    }
+  }
+  // V6: Auto-jump to classify when photo added from Step 2
+  else if (_wizPage === 2 && _photos.length > 0) {
+    setTimeout(function(){ startClassify(); }, 300);
+  }
+  // V6: Step 4 album pick → go to Step 3 for classification
+  else if (_wizPage === 4 && _photos.length > 0) {
+    _currentPhotoIdx = _photos.length - 1;
+    goToPage(3);
+  }
+}
+
+function tossPhoto() {
+  document.getElementById('preview-overlay').classList.remove('active');
+  _pendingDataUrl = null;
+  _editPhotoIdx = -1;
+}
+
+function editPhoto(idx) {
+  _editPhotoIdx = idx;
+  _pendingDataUrl = _photos[idx].dataUrl;
+  document.getElementById('previewImage').src = _pendingDataUrl;
+  document.getElementById('preview-overlay').classList.add('active');
+}
+
+function deletePhoto(idx) {
+  if (confirm('確定刪除這張照片？')) {
+    _photos.splice(idx, 1);
+    renderPhotoGrid();
+  }
+}
+
+function renderPhotoGrid() {
+  var g = document.getElementById('photoGrid');
+  var hint = document.getElementById('photoHint');
+  var btn = document.getElementById('gotoClassifyBtn');
+  g.innerHTML = '';
+  if (_photos.length === 0) {
+    hint.style.display = 'block';
+    btn.style.display = 'none';
+    return;
+  }
+  hint.style.display = 'none';
+  btn.style.display = 'block';
+  for (var i = 0; i < _photos.length; i++) {
+    (function(idx){
+      var p = _photos[idx];
+      var d = document.createElement('div');
+      d.className = 'photo-item';
+      var im = document.createElement('img');
+      im.src = p.dataUrl;
+      im.title = '點擊編輯';
+      im.style.cursor = 'pointer';
+      im.addEventListener('click', function(e){ e.stopPropagation(); editPhoto(idx); });
+      d.appendChild(im);
+      var x = document.createElement('button');
+      x.className = 'photo-del';
+      x.textContent = '✕';
+      x.addEventListener('click', function(e){ e.stopPropagation(); deletePhoto(idx); });
+      d.appendChild(x);
+      g.appendChild(d);
+    })(i);
+  }
+}
+
+function startClassify() {
+  _currentPhotoIdx = -1;
+  goToPage(3);
+  // Auto-select first unclassified photo
+  advanceToNextUnclassified();
+}
+
+// ============================================================
+// Editor Overlay (triggered from preview "Edit" button)
+// ============================================================
+function editPrev() {
+  document.getElementById('preview-overlay').classList.remove('active');
+  _editPhotoDataUrl = _pendingDataUrl;
+  document.getElementById('editor-overlay').classList.add('active');
+  initEditor(_editPhotoDataUrl, 'fabric-container');
+}
+
+// ============================================================
+// MODULE 5: CLASSIFICATION LOGIC (分類邏輯模組)
+// ============================================================
+function showClassifySubPage(n) {
+  _classifySubPage = n;
+  document.getElementById('classifySubpageGroups').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('classifySubpageDevices').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('classifySubpageAbnormals').style.display = n === 3 ? 'block' : 'none';
+}
+
+function refreshClassifyPage() {
+  renderClassifyPhotoStrip();
+  updateClassifyProgress();
+  // If all photos are classified, show the "all done" state but don't auto-jump
+  // (user may have navigated back to reclassify)
+  var allDone = _photos.length > 0;
+  for (var i = 0; i < _photos.length; i++) {
+    if (!_photos[i].classified) { allDone = false; break; }
+  }
+  if (allDone) {
+    _currentPhotoIdx = -1;
+    document.getElementById('currentPhotoPreview').style.display = 'none';
+    document.getElementById('noPhotosToClassify').style.display = 'block';
+    document.getElementById('noPhotosToClassify').textContent = '✅ 所有照片已分類完成！點擊照片可重新分類';
+    hideAllClassifySections();
+    // V6: Show action bar with both buttons
+    document.getElementById('classifyActionBar').style.display = 'flex';
+    document.getElementById('goToPreviewBtn').style.display = 'block';
+  } else {
+    document.getElementById('classifyActionBar').style.display = 'none';
+    advanceToNextUnclassified();
+  }
+}
+
+function renderClassifyPhotoStrip() {
+  var strip = document.getElementById('classifyPhotoStrip');
+  strip.innerHTML = '';
+  for (var i = 0; i < _photos.length; i++) {
+    (function(idx){
+      var p = _photos[idx];
+      var d = document.createElement('div');
+      d.className = 'photo-thumb';
+      if (idx === _currentPhotoIdx) d.classList.add('active');
+      if (p.classified) d.classList.add('classified');
+
+      var im = document.createElement('img');
+      im.src = p.dataUrl;
+      d.appendChild(im);
+
+      if (p.classified) {
+        var ck = document.createElement('span');
+        ck.className = 'check-mark';
+        ck.textContent = '✓';
+        d.appendChild(ck);
+      }
+
+      d.addEventListener('click', function(){ selectClassifyPhoto(idx); });
+      strip.appendChild(d);
+    })(i);
+  }
+}
+
+function selectClassifyPhoto(idx) {
+  _currentPhotoIdx = idx;
+  _currentGroupKey = null;
+  _currentGroupLabel = null;
+  _currentDevice = null;
+  _currentAbnormal = null;
+
+  var p = _photos[idx];
+  // Restore if already partially classified
+  if (p.groupKey) {
+    _currentGroupKey = p.groupKey;
+    _currentGroupLabel = p.groupLabel || p.groupKey;
+  }
+  if (p.device) _currentDevice = p.device;
+  if (p.abnormal) _currentAbnormal = p.abnormal;
+
+  // Show current photo
+  document.getElementById('currentPhotoPreview').style.display = 'block';
+  document.getElementById('currentPhotoImg').src = p.dataUrl;
+  document.getElementById('currentPhotoLabel').textContent = '照片 #' + (idx + 1) + (p.classified ? ' (已分類 - 可重新分類)' : '');
+  document.getElementById('noPhotosToClassify').style.display = 'none';
+  document.getElementById('classifyActionBar').style.display = 'none';
+
+  // V6: Always start at sub-page 1 (groups), build group buttons
+  showClassifySubPage(1);
+  buildGroupButtons();
+  // Pre-build device/abnormal buttons if already selected
+  if (_currentGroupKey) {
+    buildDeviceButtons(_currentGroupKey);
+  }
+  if (_currentDevice) {
+    buildAbnormalButtons(_currentDevice);
+  }
+
+  renderClassifyPhotoStrip();
+  updateClassifyProgress();
+}
+
+function buildGroupButtons() {
+  var grid = document.getElementById('classifyGroupGrid');
+  grid.innerHTML = '';
+  document.getElementById('classifyGroupResult').style.display = 'none';
+
+  for (var i = 0; i < DGS.length; i++) {
+    (function(dgs){
+      var b = document.createElement('button');
+      b.className = 'group-btn';
+      b.textContent = dgs.icon + ' ' + dgs.name;
+      if (_currentGroupKey === dgs.key) b.classList.add('selected');
+      b.addEventListener('click', function(){
+        _currentGroupKey = dgs.key;
+        _currentGroupLabel = dgs.icon + ' ' + dgs.name;
+        _currentDevice = null;
+        _currentAbnormal = null;
+        buildDeviceButtons(dgs.key);
+        document.getElementById('classifyGroupResult').style.display = 'flex';
+        document.getElementById('classifyGroupResult').textContent = '已選擇：' + _currentGroupLabel;
+        showClassifySubPage(2); // V6: navigate to device sub-page
+      });
+      grid.appendChild(b);
+    })(DGS[i]);
+  }
+  if (_currentGroupKey) {
+    document.getElementById('classifyGroupResult').style.display = 'flex';
+    document.getElementById('classifyGroupResult').textContent = '已選擇：' + _currentGroupLabel;
+  }
+}
+
+function buildDeviceButtons(gk) {
+  var grid = document.getElementById('classifyDeviceGrid');
+  grid.innerHTML = '';
+  var ds = DG[gk];
+  if (!ds || ds.length === 0) {
+    return;
+  }
+  document.getElementById('classifyDeviceResult').style.display = 'none';
+
+  for (var i = 0; i < ds.length; i++) {
+    (function(dn){
+      var b = document.createElement('button');
+      b.className = 'device-btn';
+      b.textContent = dn;
+      if (_currentDevice === dn) b.classList.add('selected');
+      b.addEventListener('click', function(){
+        _currentDevice = dn;
+        _currentAbnormal = null;
+        buildAbnormalButtons(dn);
+        document.getElementById('classifyDeviceResult').style.display = 'flex';
+        document.getElementById('classifyDeviceResult').textContent = '已選擇：' + dn;
+        showClassifySubPage(3); // V6: navigate to abnormal sub-page
+      });
+      grid.appendChild(b);
+    })(ds[i]);
+  }
+  if (_currentDevice) {
+    document.getElementById('classifyDeviceResult').style.display = 'flex';
+    document.getElementById('classifyDeviceResult').textContent = '已選擇：' + _currentDevice;
+  }
+}
+
+function buildAbnormalButtons(dn) {
+  var grid = document.getElementById('classifyAbnormalGrid');
+  grid.innerHTML = '';
+  var items = AT[dn];
+  document.getElementById('classifyAbnormalResult').style.display = 'none';
+  document.getElementById('customAbnormalBtn').classList.remove('selected');
+
+  // V6: 🟢 無異常 button (always first) — auto-confirm
+  var noneBtn = document.createElement('button');
+  noneBtn.className = 'abnormal-btn green';
+  noneBtn.textContent = '🟢 無異常';
+  if (_currentAbnormal === '無異常') noneBtn.classList.add('selected');
+  noneBtn.addEventListener('click', function(){
+    _currentAbnormal = '無異常';
+    confirmClassify(); // V6: auto-confirm (same as before)
+  });
+  grid.appendChild(noneBtn);
+
+  if (items) {
+    for (var i = 0; i < items.length; i++) {
+      (function(item){
+        var b = document.createElement('button');
+        b.className = 'abnormal-btn ' + item.severity;
+        b.textContent = item.label;
+        if (_currentAbnormal === item.label) b.classList.add('selected');
+        b.addEventListener('click', function(){
+          _currentAbnormal = item.label;
+          confirmClassify(); // V6: 修改1 — 一鍵確認
+        });
+        grid.appendChild(b);
+      })(items[i]);
+    }
+  }
+  if (_currentAbnormal && items) {
+    // Check if current abnormal matches a preset
+    var found = false;
+    for (var j = 0; j < items.length; j++) {
+      if (items[j].label === _currentAbnormal) { found = true; break; }
+    }
+    if (found) {
+      document.getElementById('classifyAbnormalResult').style.display = 'flex';
+      document.getElementById('classifyAbnormalResult').textContent = dn + ' — ' + _currentAbnormal;
+    } else {
+      // Custom abnormal
+      document.getElementById('classifyAbnormalResult').style.display = 'flex';
+      document.getElementById('classifyAbnormalResult').textContent = dn + ' — ✏️ ' + _currentAbnormal;
+      document.getElementById('customAbnormalBtn').classList.add('selected');
+    }
+  }
+}
+
+function customAbnormal() {
+  if (!_currentDevice) {
+    alert('請先選擇設備');
+    return;
+  }
+  var txt = prompt('請輸入自訂異常說明：', '');
+  if (txt === null) return; // cancelled
+  if (!txt.trim()) return;
+  _currentAbnormal = txt.trim();
+  confirmClassify(); // V6: 修改1 — 自訂異常一鍵確認
+}
+
+
+function updateClassifyProgress() {
+  var classified = 0;
+  for (var i = 0; i < _photos.length; i++) {
+    if (_photos[i].classified) classified++;
+  }
+  document.getElementById('progressCount').textContent = classified + '/' + _photos.length;
+}
+
+function confirmClassify() {
+  if (_currentPhotoIdx < 0 || !_currentGroupKey || !_currentDevice || !_currentAbnormal) return;
+
+  var p = _photos[_currentPhotoIdx];
+  p.groupKey = _currentGroupKey;
+  p.groupLabel = _currentGroupLabel;
+  p.device = _currentDevice;
+  p.abnormal = _currentAbnormal;
+  p.classified = true;
+
+  // Generate filename
+  var rn = _restaurant ? _restaurant.name : '未知';
+  var rc = _restaurant ? _restaurant.code : 'UNKN';
+  var now = new Date();
+  var dt = now.toISOString().slice(0,10).replace(/-/g,'');
+  var tm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+  _photoSeq++;
+  var sq = String(_photoSeq).padStart(3,'0');
+  p.fileName = rc + '_' + rn + '_' + _currentDevice.replace(/[/&]/g,'-') + '_' + _currentAbnormal.replace(/[/&]/g,'-') + '_' + dt + '_' + tm + '_' + sq + '.jpg';
+
+  // Clear current selection
+  _currentGroupKey = null;
+  _currentGroupLabel = null;
+  _currentDevice = null;
+  _currentAbnormal = null;
+
+  renderClassifyPhotoStrip();
+  updateClassifyProgress();
+
+  // V6: Always show "📷 繼續下一張"; if allDone, also show "📋 完成，去預覽"
+  var classifiedCount = 0;
+  for (var i = 0; i < _photos.length; i++) {
+    if (_photos[i].classified) classifiedCount++;
+  }
+  var allDone = (classifiedCount === _photos.length);
+
+  hideAllClassifySections();
+  document.getElementById('currentPhotoPreview').style.display = 'none';
+
+  // V6: Show dual-button action bar
+  var actionBar = document.getElementById('classifyActionBar');
+  actionBar.style.display = 'flex';
+
+  // 📷 繼續下一張 — always visible
+  var nextBtn = document.getElementById('continueNextBtn');
+  nextBtn.style.display = 'block';
+  nextBtn.style.background = '#0071e3';
+
+  // 📋 完成，去預覽 — only when allDone
+  var previewBtn = document.getElementById('goToPreviewBtn');
+  previewBtn.style.display = allDone ? 'block' : 'none';
+
+  // Auto-upload every 5 classified photos
+  var unuploaded = 0;
+  for (var j = 0; j < _photos.length; j++) {
+    if (_photos[j].classified && !_photos[j].uploaded) unuploaded++;
+  }
+  if (unuploaded >= 5) autoUploadPhotos();
+}
+
+// V6: Hide all classification sub-pages
+function hideAllClassifySections() {
+  document.getElementById('classifySubpageGroups').style.display = 'none';
+  document.getElementById('classifySubpageDevices').style.display = 'none';
+  document.getElementById('classifySubpageAbnormals').style.display = 'none';
+}
+
+// V6: "繼續下一張" — trigger camera for next photo
+function continueNextPhoto() {
+  _continueNextMode = true;
+  document.getElementById('albumInput').click();
+}
+
+function advanceToNextUnclassified() {
+  // Find next unclassified photo
+  var found = false;
+  for (var i = 0; i < _photos.length; i++) {
+    if (!_photos[i].classified) {
+      selectClassifyPhoto(i);
+      found = true;
+      break;
+    }
+  }
+  if (!found && _photos.length > 0) {
+    // All classified — auto-jump to Step 4
+    _currentPhotoIdx = -1;
+    document.getElementById('currentPhotoPreview').style.display = 'none';
+    document.getElementById('noPhotosToClassify').style.display = 'block';
+    document.getElementById('noPhotosToClassify').textContent = '✅ 所有照片已分類完成！';
+    hideAllClassifySections();
+    renderClassifyPhotoStrip();
+    updateClassifyProgress();
+    setTimeout(function(){ goToPage(4); }, 800);
+  } else if (!found) {
+    // No photos at all
+    _currentPhotoIdx = -1;
+    document.getElementById('currentPhotoPreview').style.display = 'none';
+    document.getElementById('noPhotosToClassify').style.display = 'block';
+    hideAllClassifySections();
+  }
+}
+
+// ============================================================
+// PAGE 4: SUMMARY & REPORT
+// ============================================================
+function refreshSummaryPage() {
+  var sr = document.getElementById('sumRestaurant');
+  var sp = document.getElementById('sumPhotos');
+  var sc = document.getElementById('sumClassified');
+
+  sr.textContent = _restaurant ? _restaurant.code + ' ' + _restaurant.name : '—';
+  sp.textContent = String(_photos.length);
+
+  var classified = 0;
+  for (var i = 0; i < _photos.length; i++) {
+    if (_photos[i].classified) classified++;
+  }
+  sc.textContent = String(classified);
+
+  // Build photo summary list
+  var list = document.getElementById('photoSummaryList');
+  list.innerHTML = '';
+  if (_photos.length === 0) {
+    list.innerHTML = '<div class="no-photos-hint">尚無照片</div>';
+  }
+  for (var i = 0; i < _photos.length; i++) {
+    var p = _photos[i];
+    var d = document.createElement('div');
+    d.className = 'photo-summary-item';
+    var im = document.createElement('img');
+    im.src = p.dataUrl;
+    d.appendChild(im);
+    var info = document.createElement('div');
+    info.className = 'photo-summary-info';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'psi-name';
+    nameEl.textContent = p.fileName || '照片 #' + (i+1) + ' (未分類)';
+    var detail = document.createElement('div');
+    detail.className = 'psi-detail';
+    if (p.classified) {
+      detail.textContent = (p.groupLabel || '') + ' → ' + p.device + ' → ' + p.abnormal;
+    } else {
+      detail.textContent = '⚠️ 尚未分類';
+      detail.style.color = '#dc3545';
+    }
+    info.appendChild(nameEl);
+    info.appendChild(detail);
+    d.appendChild(info);
+    list.appendChild(d);
+  }
+
+  // Show/hide export
+  var ee = document.getElementById('exportActions');
+  ee.style.display = _photos.length > 0 ? 'flex' : 'none';
+}
+
+// ============================================================
+// GENFN (from V2)
+// ============================================================
+function genFN(dn, al, seq) {
+  var rn = _restaurant ? _restaurant.name : '未知';
+  var now = new Date();
+  var dt = now.toISOString().slice(0,10).replace(/-/g,'');
+  var tm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+  var sq = String(seq).padStart(3,'0');
+  return (_restaurant ? _restaurant.code : 'UNKN') + '_' + rn + '_' + dn.replace(/[/&]/g,'-') + '_' + al + '_' + dt + '_' + tm + '_' + sq + '.jpg';
+}
+
+// ============================================================
+// MODULE 6: API BRIDGE & EXPORT (通訊接口模組)
+// ============================================================
+function autoUploadPhotos() {
+  var toUpload = [];
+  for (var i = 0; i < _photos.length; i++) {
+    if (_photos[i].classified && !_photos[i].uploaded) {
+      var b64 = _photos[i].dataUrl.split(',')[1];
+      toUpload.push({fileName: _photos[i].fileName, data: b64});
+    }
+  }
+  if (toUpload.length === 0) return;
+
+  fetch('https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec?action=upload', {
+    method: 'POST',
+    body: JSON.stringify({photos: toUpload})
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.success) {
+        for (var j = 0; j < _photos.length; j++) {
+          if (_photos[j].classified && !_photos[j].uploaded) _photos[j].uploaded = true;
+        }
+      }
+    }).catch(function(){ /* silent fail, user can manually save */ });
+}
+
+function shareAll() {
+  var btn = document.getElementById('shareAllBtn');
+  var rs = document.getElementById('reportStatus');
+  btn.disabled = true; btn.style.opacity = '0.5'; btn.textContent = '⏳ 上傳中...';
+
+  var photos = [];
+  for (var i = 0; i < _photos.length; i++) {
+    if (_photos[i].uploaded) continue;
+    var b64 = _photos[i].dataUrl.split(',')[1];
+    photos.push({fileName: _photos[i].fileName, data: b64});
+  }
+  if (photos.length === 0) {
+    rs.style.display = 'block'; rs.style.color = '#86868b'; rs.style.background = '#f9f9fb';
+    rs.textContent = '所有照片已上傳完畢';
+    btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '💾 儲存/分享全部';
+    return;
+  }
+
+  fetch('https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec?action=upload', {
+    method: 'POST',
+    body: JSON.stringify({photos: photos})
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.success) {
+        for (var j = 0; j < _photos.length; j++) _photos[j].uploaded = true;
+        refreshSummaryPage();
+        rs.style.display = 'block'; rs.style.color = '#34c759'; rs.style.background = '#f0fff4';
+        rs.textContent = '✅ 已上傳 ' + d.saved + ' 張照片到雲端硬碟';
+        btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '💾 儲存/分享全部';
+      } else {
+        rs.style.display = 'block'; rs.style.color = '#dc3545'; rs.style.background = '#fff0f0';
+        rs.textContent = '❌ 上傳失敗: ' + (d.error || '未知錯誤');
+        btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '💾 儲存/分享全部';
+      }
+    }).catch(function(err){
+      rs.style.display = 'block'; rs.style.color = '#dc3545'; rs.style.background = '#fff0f0';
+      rs.textContent = '❌ 上傳失敗，請檢查網路';
+      btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '💾 儲存/分享全部';
+    });
+}
+
+// ============================================================
+// GENERATE REPORT (V7: Pure browser-side ExcelJS with perfect centering)
+// ============================================================
+var TEMPLATE_URL = 'https://github.com/cuteqqcute-web/daily-inspection-v7/raw/master/tmaster2.xlsx';
+var PHOTOS_PER_ROW = 7;
+var PHOTO_COLS = 'KLMNOPQ';
 var EMU_PER_PX = 9525;
-var MARGIN_EMU = 90000; // 0.25cm
+var EMU_PER_PT = 12700;
+var MARGIN_EMU = 90000;
 
-// Convert column letter to 1-based number (A=1, B=2, K=11)
 function colToNum(col) {
   var n = 0;
   for (var i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
   return n;
 }
 
-// Extract row number from cell ref (e.g. "K3" -> 3)
-function rowFromCell(ref) {
-  var m = ref.match(/(\d+)$/);
-  return m ? parseInt(m[1]) : 1;
+function normalize(s) {
+  return s.replace(/[\s/&及\-()（）]/g, '').toLowerCase();
 }
 
-// Extract column letter from cell ref (e.g. "K3" -> "K")
-function colFromCell(ref) {
-  var m = ref.match(/^([A-Z]+)/);
-  return m ? m[1] : 'A';
+function colWidthToEmu(w) { return Math.floor(w * 7 + 5) * EMU_PER_PX; }
+function rowHeightToEmu(h) { return Math.round(h * EMU_PER_PT); }
+
+function calcCentering(cellW, cellH, pw, ph) {
+  var maxH = 2250780, maxW = cellW - MARGIN_EMU * 2, avH = cellH - MARGIN_EMU * 2;
+  var asp = pw / ph, rw, rh, ox, oy;
+  if (pw > ph) { rw = maxW; rh = Math.round(rw / asp); if (rh > avH) { rh = avH; rw = Math.round(rh * asp); } ox = MARGIN_EMU; oy = Math.floor((cellH - rh) / 2); }
+  else if (ph > pw) { rh = Math.min(maxH, avH); rw = Math.round(rh * asp); if (rw > maxW) { rw = maxW; rh = Math.round(rw / asp); } ox = Math.floor((cellW - rw) / 2); oy = MARGIN_EMU; }
+  else { var s = Math.min(maxW, avH); rw = rh = s; ox = Math.floor((cellW - s) / 2); oy = Math.floor((cellH - s) / 2); }
+  return { rw: rw, rh: rh, ox: ox, oy: oy };
 }
 
-// Get image dimensions from base64 data
 function getImageSize(dataUrl) {
-  return new Promise(function(resolve) {
+  return new Promise(function(res) {
     var img = new Image();
-    img.onload = function() { resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
-    img.onerror = function() { resolve({ w: 384, h: 606 }); };
+    img.onload = function() { res({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = function() { res({ w: 384, h: 606 }); };
     img.src = dataUrl;
   });
 }
 
-// Calculate perfect centering EMU offsets
-function calcCentering(cellWidthEmu, cellHeightEmu, photoW, photoH) {
-  var maxRenderH = 2250780; // 6.25cm
-  var maxRenderW = cellWidthEmu - MARGIN_EMU * 2;
-  var availH = cellHeightEmu - MARGIN_EMU * 2;
-
-  var aspect = photoW / photoH;
-  var renderH, renderW;
-
-  if (photoW > photoH) {
-    // Landscape
-    renderW = maxRenderW;
-    renderH = Math.round(renderW / aspect);
-    if (renderH > availH) { renderH = availH; renderW = Math.round(renderH * aspect); }
-    var offX = MARGIN_EMU;
-    var offY = Math.floor((cellHeightEmu - renderH) / 2);
-  } else if (photoH > photoW) {
-    // Portrait
-    renderH = Math.min(maxRenderH, availH);
-    renderW = Math.round(renderH * aspect);
-    if (renderW > maxRenderW) { renderW = maxRenderW; renderH = Math.round(renderW / aspect); }
-    var offX = Math.floor((cellWidthEmu - renderW) / 2);
-    var offY = MARGIN_EMU;
-  } else {
-    // Square
-    var side = Math.min(maxRenderW, availH);
-    renderW = renderH = side;
-    offX = Math.floor((cellWidthEmu - side) / 2);
-    offY = Math.floor((cellHeightEmu - side) / 2);
-  }
-
-  return { renderW: renderW, renderH: renderH, offX: offX, offY: offY };
-}
-
-// Convert Excel column width to EMU
-// Formula: px = floor(width * 7 + 5); EMU = px * 9525
-function colWidthToEmu(width) {
-  var px = Math.floor(width * 7 + 5);
-  return px * EMU_PER_PX;
-}
-
-// Convert row height (pt) to EMU
-function rowHeightToEmu(heightPt) {
-  return Math.round(heightPt * EMU_PER_PT);
-}
-
-document.getElementById('templateInput').addEventListener('change', function(e) {
-  var file = e.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev) {
-    _templateBuffer = ev.target.result;
-    checkReady();
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-document.getElementById('photoInput').addEventListener('change', function(e) {
-  var files = e.target.files;
-  if (!files.length) return;
-  _photos = [];
-  var loaded = 0;
-  for (var i = 0; i < files.length; i++) {
-    (function(f) {
-      var reader2 = new FileReader();
-      reader2.onload = function(ev2) {
-        _photos.push({ name: f.name, dataUrl: ev2.target.result, base64: ev2.target.result.split(',')[1] });
-        loaded++;
-        if (loaded === files.length) {
-          setStatus('已載入 ' + _photos.length + ' 張照片', '');
-          checkReady();
-        }
-      };
-      reader2.readAsDataURL(f);
-    })(files[i]);
-  }
-});
-
-function checkReady() {
-  var btn = document.getElementById('generateBtn');
-  btn.disabled = !(_templateBuffer && _photos.length > 0);
-  if (_templateBuffer && _photos.length > 0) {
-    setStatus('準備就緒！點擊生成按鈕', '');
-  }
-}
-
-function setStatus(msg, type) {
-  var s = document.getElementById('status');
-  s.textContent = msg;
-  s.className = 'status' + (type ? ' ' + type : '');
-}
-
-function setProgress(pct) {
-  document.getElementById('progressBar').style.width = pct + '%';
-}
-
-document.getElementById('generateBtn').addEventListener('click', async function() {
-  var btn = this;
+async function generateReport() {
+  var btn = document.getElementById('generateReportBtn');
+  var rs = document.getElementById('reportStatus');
+  rs.style.display = 'block';
+  rs.style.color = '#86868b';
+  rs.style.background = '#f9f9fb';
+  rs.textContent = '⏳ 載入模板...';
   btn.disabled = true;
-  btn.textContent = '⏳ 生成中...';
-  setStatus('正在讀取模板...', '');
-  setProgress(10);
+  btn.style.opacity = '0.5';
+  btn.textContent = '⏳ 產生中...';
 
   try {
+    // Group photos by device
+    var groups = {};
+    for (var i = 0; i < _photos.length; i++) {
+      var p = _photos[i];
+      if (!p.classified) continue;
+      var dev = p.device;
+      if (!groups[dev]) groups[dev] = { photos: [], abnormals: [] };
+      groups[dev].photos.push(p);
+      if (p.abnormal && p.abnormal !== '無異常' && groups[dev].abnormals.indexOf(p.abnormal) < 0) groups[dev].abnormals.push(p.abnormal);
+    }
+    var totalPhotos = 0;
+    for (var k in groups) totalPhotos += groups[k].photos.length;
+    if (totalPhotos === 0) { throw new Error('沒有已分類的照片'); }
+
+    // Load template from GitHub
+    rs.textContent = '⏳ 載入 Excel 模板...';
+    var resp = await fetch(TEMPLATE_URL);
+    if (!resp.ok) throw new Error('模板下載失敗 (' + resp.status + ')');
+    var templateBuffer = await resp.arrayBuffer();
+
+    rs.textContent = '⏳ 解析模板...';
     var ExcelJS = window.ExcelJS;
     var wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(_templateBuffer);
-
+    await wb.xlsx.load(templateBuffer);
     var sheet = wb.getWorksheet(1) || wb.worksheets[0];
-    var targetRef = document.getElementById('targetCell').value || 'K3';
-    var colLetter = colFromCell(targetRef);
-    var rowNum = rowFromCell(targetRef);
-    var colNum = colToNum(colLetter);
 
-    // Get cell dimensions
-    var col = sheet.getColumn(colNum);
-    var row = sheet.getRow(rowNum);
-    var cellWidthEmu = colWidthToEmu(col.width || 8.43);
-    var cellHeightEmu = rowHeightToEmu(row.height || 191.4);
+    // Read D column values to build device-to-row map
+    var dMap = {};
+    sheet.eachRow(function(row, rowNum) {
+      var cell = row.getCell(4);
+      var val = cell.value;
+      if (val && typeof val === 'string' && val !== '項目' && val !== '休息') {
+        dMap[val] = rowNum;
+      }
+    });
 
-    setStatus('模板讀取完成，開始插入照片...', '');
-    setProgress(30);
-
-    // Insert each photo
-    for (var i = 0; i < _photos.length; i++) {
-      var photo = _photos[i];
-      var size = await getImageSize(photo.dataUrl);
-      var centering = calcCentering(cellWidthEmu, cellHeightEmu, size.w, size.h);
-
-      // ExcelJS addImage: uses image base64 and anchor
-      var imageId = wb.addImage({
-        base64: photo.base64,
-        extension: 'jpeg'
-      });
-
-      // Use tl (top-left) anchor with offsets for centering
-      var currentRow = rowNum + Math.floor(i / 7);
-      var currentCol = colNum + (i % 7);
-
-      sheet.addImage(imageId, {
-        tl: { col: currentCol - 1, row: currentRow - 1, colOff: centering.offX, rowOff: centering.offY },
-        br: {
-          col: currentCol - 1,
-          row: currentRow - 1,
-          colOff: centering.offX + centering.renderW,
-          rowOff: centering.offY + centering.renderH
-        },
-        editAs: 'oneCell'
-      });
-
-      setProgress(30 + Math.round((i + 1) / _photos.length * 60));
-      setStatus('已插入 ' + (i + 1) + '/' + _photos.length + ' 張照片', '');
+    // Match devices
+    var equipRow = {};
+    for (var dev in groups) {
+      var nd = normalize(dev);
+      for (var tv in dMap) {
+        var nt = normalize(tv);
+        if (nd === nt || (nd.length >= 2 && nt.indexOf(nd) >= 0) || (nt.length >= 2 && nd.indexOf(nt) >= 0)) {
+          equipRow[dev] = dMap[tv];
+          break;
+        }
+      }
     }
 
-    setProgress(90);
-    setStatus('正在打包 Excel 檔案...', '');
+    rs.textContent = '⏳ 插入照片（完美置中）...';
+    var placed = 0;
 
-    // Generate output buffer
-    var buffer = await wb.xlsx.writeBuffer();
+    for (var dev in groups) {
+      var baseRow = equipRow[dev];
+      if (!baseRow) continue;
+      var photos = groups[dev].photos;
+      var needRows = Math.ceil(photos.length / PHOTOS_PER_ROW);
 
-    // Create download link
-    var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      // Insert extra rows if needed
+      if (needRows > 1) {
+        for (var r = 1; r < needRows; r++) {
+          sheet.insertRow(baseRow + r);
+          sheet.getRow(baseRow + r).height = 191.4;
+        }
+      }
+
+      // Get cell dimensions from column K (col 11) and the base row
+      var colK = sheet.getColumn(11);
+      var cellW = colWidthToEmu(colK.width || 8.43);
+      var rowEl = sheet.getRow(baseRow);
+      var cellH = rowHeightToEmu(rowEl.height || 191.4);
+
+      // Insert photos with perfect centering
+      for (var j = 0; j < photos.length; j++) {
+        var photo = photos[j];
+        var size = await getImageSize(photo.dataUrl);
+        var c = calcCentering(cellW, cellH, size.w, size.h);
+
+        var photoRow = baseRow + Math.floor(j / PHOTOS_PER_ROW);
+        var photoCol = 11 + (j % PHOTOS_PER_ROW); // K=11
+
+        // Convert base64 to buffer for ExcelJS
+        var b64 = photo.dataUrl.split(',')[1];
+        var binary = atob(b64);
+        var buf = new Uint8Array(binary.length);
+        for (var bi = 0; bi < binary.length; bi++) buf[bi] = binary.charCodeAt(bi);
+
+        var imageId = wb.addImage({ buffer: buf, extension: 'jpeg' });
+
+        sheet.addImage(imageId, {
+          tl: { col: photoCol - 1, row: photoRow - 1, colOff: c.ox, rowOff: c.oy },
+          br: { col: photoCol - 1, row: photoRow - 1, colOff: c.ox + c.rw, rowOff: c.oy + c.rh },
+          editAs: 'oneCell'
+        });
+
+        placed++;
+        if (placed % 5 === 0) rs.textContent = '⏳ 插入照片 ' + placed + '/' + totalPhotos + '（完美置中）...';
+      }
+
+      // Write J column with abnormals
+      var abnList = groups[dev].abnormals;
+      if (abnList.length > 0) {
+        var jv = abnList.map(function(a, idx) { return (idx + 1) + '.' + a; }).join('\n');
+        var jCell = sheet.getCell('J' + baseRow);
+        jCell.value = jv;
+        jCell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+      }
+    }
+
+    rs.textContent = '⏳ 打包 Excel 檔案...';
+    var outBuffer = await wb.xlsx.writeBuffer();
+    var blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'report_v7.xlsx';
+    a.download = '日巡報告_' + (_restaurant ? _restaurant.code : '') + '.xlsx';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
 
-    setProgress(100);
-    setStatus('✅ 報告生成完成！已開始下載。', 'ok');
+    rs.style.color = '#34c759';
+    rs.style.background = '#f0fff4';
+    rs.textContent = '✅ 報告已產出！' + placed + ' 張照片，完美置中完成。';
     btn.disabled = false;
-    btn.textContent = '🚀 生成報告（完美置中）';
-
+    btn.style.opacity = '1';
+    btn.textContent = '📊 產出日巡報告';
+    beep();
   } catch (err) {
-    setStatus('❌ 錯誤: ' + err.message, 'err');
+    rs.style.color = '#dc3545';
+    rs.style.background = '#fff0f0';
+    rs.textContent = '❌ ' + err.message;
     btn.disabled = false;
-    btn.textContent = '🚀 生成報告（完美置中）';
-    setProgress(0);
+    btn.style.opacity = '1';
+    btn.textContent = '📊 產出日巡報告';
     console.error(err);
   }
-});
+}
+
+// ============================================================
+// FABRIC.JS EDITOR (from V2)
+// ============================================================
+var _cv = null, _hist = [], _ds = null, _cr = null, _tool = null, _ts = null;
+var _tb = { pen:'btnPen', line:'btnLine', arrow:'btnArrow', circle:'btnCircle', rect:'btnRect', crop:'btnCrop' };
+
+function initEditor(url, cid) {
+  var ct = document.getElementById(cid); ct.innerHTML = '';
+  var w = Math.max(300, window.innerWidth), h = Math.max(300, window.innerHeight - 120);
+  var el = document.createElement('canvas'); el.id = 'fabric-canvas'; el.width = w; el.height = h;
+  ct.appendChild(el);
+  _cv = new fabric.Canvas(el, { width:w, height:h, backgroundColor:'#2a2a3e', isDrawingMode:false, selection:false });
+  var img = new Image();
+  img.onload = function() {
+    var s = Math.min(w/img.width, h/img.height) * 0.95;
+    var fi = new fabric.Image(img, { scaleX:s, scaleY:s, originX:'center', originY:'center', left:w/2, top:h/2 });
+    _cv.setBackgroundImage(fi, _cv.renderAll.bind(_cv));
+    saveState();
+  };
+  img.src = url;
+  _cv.on('object:modified', saveState);
+  _cv.on('path:created', function(ev) {
+    if (_tool === 'arrow') addArrow(ev);
+    ev.path.set({ selectable:false, evented:false }); saveState();
+  });
+  _cv.on('text:editing:exited', saveState);
+  _cv.on('mouse:down', function(opt) { if (!_ds && 'line,circle,rect,crop'.indexOf(_tool) >= 0) _ds = _cv.getPointer(opt.e); });
+  _cv.on('mouse:move', function(opt) {
+    if (!_ds || 'line,circle,rect,crop'.indexOf(_tool) < 0) return;
+    var p = _cv.getPointer(opt.e), c = editorColor.value, sz = +editorSize.value;
+    var dx = p.x - _ds.x, dy = p.y - _ds.y;
+    if (_ts) _cv.remove(_ts);
+    switch (_tool) {
+      case 'line': _ts = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:false,evented:false,opacity:.6}); break;
+      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); _ts = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:Math.max(side/2,5),ry:Math.max(side/2,5),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false,opacity:.6}); break;
+      case 'rect': _ts = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.max(Math.abs(dx),5),height:Math.max(Math.abs(dy),5),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false,opacity:.6}); break;
+      case 'crop': _ts = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.max(Math.abs(dx),5),height:Math.max(Math.abs(dy),5),fill:'rgba(255,255,255,0.08)',stroke:'#ff8906',strokeWidth:2,strokeDashArray:[6,4],selectable:false,evented:false,opacity:.6}); break;
+    }
+    if (_ts) _cv.add(_ts), _cv.renderAll();
+  });
+  _cv.on('mouse:up', function(opt) {
+    if (!_ds || 'line,circle,rect,crop'.indexOf(_tool) < 0) return;
+    if (_ts) _cv.remove(_ts), _ts = null;
+    var p = _cv.getPointer(opt.e), dx = p.x - _ds.x, dy = p.y - _ds.y;
+    if (Math.abs(dx) < 3 && Math.abs(dy) < 3) { _ds = null; return; }
+    var c = editorColor.value, sz = +editorSize.value, sh;
+    switch (_tool) {
+      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
+      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
+      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
+      case 'crop': if (_cr){_cv.remove(_cr);if(_hist.length>1)_hist.pop();} sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'rgba(255,255,255,0.08)',stroke:'#ff8906',strokeWidth:2,strokeDashArray:[6,4],hasRotatingPoint:false,selectable:true,evented:true}); _cr = sh; break;
+    }
+    _ds = null; if (sh) _cv.add(sh), saveState();
+  });
+  editorColor.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.color = this.value; };
+  editorSize.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.width = +this.value; };
+}
+
+function setTool(t) {
+  if (!_cv) return;
+  _tool = t; _ds = null;
+  var bs = document.querySelectorAll('.tool-btn');
+  for (var i = 0; i < bs.length; i++) bs[i].classList.remove('active');
+  var el = document.getElementById(_tb[t]); if (el) el.classList.add('active');
+  var dr = t === 'pen' || t === 'arrow';
+  _cv.isDrawingMode = dr;
+  _cv.selection = !dr && 'line,circle,rect,crop'.indexOf(t) < 0;
+  if (dr) { _cv.freeDrawingBrush.width = +editorSize.value; _cv.freeDrawingBrush.color = editorColor.value; }
+  if (t === 'crop' && _cr) { _cv.remove(_cr); _cr = null; }
+}
+
+function addArrow(ev) {
+  var c = editorColor.value, sz = +editorSize.value, hl = Math.max(sz*5,14);
+  ev.path.set('stroke', c); ev.path.set({ selectable:false, evented:false });
+  var pd = ev.path.path, lc = pd[pd.length-1];
+  var ex = lc[lc.length-2], ey = lc[lc.length-1], sx = ex, sy = ey;
+  for (var k = pd.length-2; k >= 0; k--) {
+    var cc = pd[k], cx = cc[cc.length-2], cy = cc[cc.length-1];
+    if (Math.hypot(ex-cx, ey-cy) > 5) { sx = cx; sy = cy; break; }
+  }
+  var dx = ex - sx, dy = ey - sy;
+  if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) { dx = 1; dy = 0; }
+  var p = ev.e ? _cv.getPointer(ev.e) : { x:ex, y:ey };
+  var tri = new fabric.Triangle({ left:p.x, top:p.y, originX:'center', originY:'center', width:hl, height:hl, angle:Math.atan2(dy,dx)*180/Math.PI+90, fill:c, selectable:false, evented:false });
+  _cv.add(tri);
+}
+
+function addText() {
+  if (!_cv) return;
+  setTool(null);
+  var t = prompt('請輸入文字：'); if (!t) return;
+  var tx = new fabric.IText(t, { left:_cv.width/2-40, top:_cv.height/2-15, fontSize:Math.max(+editorSize.value*12,28), fill:editorColor.value, fontFamily:'Arial,sans-serif' });
+  _cv.add(tx); _cv.setActiveObject(tx); saveState();
+}
+
+function saveState() {
+  if (!_cv) return;
+  if (_hist.length > 30) _hist.shift();
+  _hist.push(JSON.stringify(_cv.toJSON(['backgroundImage'])));
+}
+
+function undo() {
+  if (!_cv || _hist.length <= 1) return;
+  if (_cr) { _cv.remove(_cr); _cr = null; }
+  _hist.pop();
+  var bg = _editPhotoDataUrl;
+  _cv.loadFromJSON(JSON.parse(_hist[_hist.length-1]), function() {
+    _cv.getObjects().forEach(function(o){ o.set({ selectable:false, evented:false }); });
+    if (bg && !_cv.backgroundImage) {
+      var w = _cv.width, h = _cv.height;
+      fabric.Image.fromURL(bg, function(img) {
+        img.set({ scaleX:Math.min(w/img.width,h/img.height)*0.95, scaleY:Math.min(w/img.width,h/img.height)*0.95, originX:'center', originY:'center', left:w/2, top:h/2 });
+        _cv.setBackgroundImage(img, _cv.renderAll.bind(_cv));
+      });
+    } else _cv.renderAll();
+  });
+}
+
+function saveEditor() {
+  if (!_cv) return;
+  if (_cr) { applyCrop(function(){ doneEditing(); }); return; }
+  doneEditing();
+}
+
+function doneEditing() {
+  _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.92 });
+  closeEditor();
+  // Show preview again with the edited image, then auto-keep
+  document.getElementById('previewImage').src = _pendingDataUrl;
+  keepPhoto();
+  // V6: Auto-jump moved to keepPhoto()
+}
+
+function closeEditor() {
+  if (_cv) _cv.dispose();
+  _cv = null; _hist = []; _ds = null; _cr = null; _tool = null; _ts = null;
+  document.getElementById('editor-overlay').classList.remove('active');
+}
+
+function applyCrop(cb) {
+  if (!_cv || !_cr) { if (cb) cb(); return; }
+  var r = _cr.getBoundingRect(true);
+  _cr.visible = false; _cv.renderAll();
+  var url = _cv.toDataURL({format:'jpeg',quality:0.92});
+  _cr.visible = true; _cv.renderAll();
+  var img = new Image();
+  img.onload = function() {
+    var tc = document.createElement('canvas');
+    tc.width = Math.round(r.width); tc.height = Math.round(r.height);
+    tc.getContext('2d').drawImage(img, Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height), 0, 0, Math.round(r.width), Math.round(r.height));
+    _cv.remove(_cr); _cr = null;
+    _cv.clear(); _cv.setWidth(r.width); _cv.setHeight(r.height);
+    fabric.Image.fromURL(tc.toDataURL('image/jpeg',0.92), function(fi) {
+      fi.set({ scaleX:1, scaleY:1, originX:'center', originY:'center', left:r.width/2, top:r.height/2 });
+      _cv.setBackgroundImage(fi, function(){ _cv.renderAll(); _hist = []; saveState(); if (cb) cb(); });
+    });
+  };
+  img.src = url;
+}
+
+// ============================================================
+// BINDINGS & INIT
+// ============================================================
+function bindButtons() {
+  var ci = document.getElementById('cameraInput');
+  var ai = document.getElementById('albumInput');
+  var ai4 = document.getElementById('albumInput4');
+  if (ci) ci.addEventListener('change', onFileInput);
+  if (ai) ai.addEventListener('change', onFileInput);
+  if (ai4) ai4.addEventListener('change', onFileInput);
+
+  var sb = document.getElementById('shareAllBtn');
+  if (sb) sb.addEventListener('click', shareAll);
+
+  var rb = document.getElementById('generateReportBtn');
+  if (rb) rb.addEventListener('click', generateReport);
+}
+
+function setup() {
+  if (_ini) return; _ini = true;
+  initRestaurant();
+  bindButtons();
+  var s = document.getElementById('restaurantSelect');
+  if (s) s.addEventListener('change', onRestaurantChange);
+}
+
+document.addEventListener('DOMContentLoaded', setup);
 </script>
+
 </body>
 </html>
