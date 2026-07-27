@@ -1408,18 +1408,38 @@ var _tb = { pen:'btnPen', line:'btnLine', arrow:'btnArrow', circle:'btnCircle', 
 
 function initEditor(url, cid) {
   var ct = document.getElementById(cid); ct.innerHTML = '';
-  var w = Math.max(300, window.innerWidth), h = Math.max(300, window.innerHeight - 120);
-  var el = document.createElement('canvas'); el.id = 'fabric-canvas'; el.width = w; el.height = h;
-  ct.appendChild(el);
-  _cv = new fabric.Canvas(el, { width:w, height:h, backgroundColor:'#2a2a3e', isDrawingMode:false, selection:false });
+  // Load image first to get natural dimensions
   var img = new Image();
   img.onload = function() {
-    var s = Math.min(w/img.width, h/img.height) * 0.95;
-    var fi = new fabric.Image(img, { scaleX:s, scaleY:s, originX:'center', originY:'center', left:w/2, top:h/2 });
+    var imgW = img.naturalWidth, imgH = img.naturalHeight;
+    // Display canvas size: fit within viewport but keep aspect ratio
+    var maxW = Math.max(300, window.innerWidth - 20);
+    var maxH = Math.max(300, window.innerHeight - 150);
+    var scale = Math.min(maxW / imgW, maxH / imgH, 1);
+    var dispW = Math.round(imgW * scale);
+    var dispH = Math.round(imgH * scale);
+
+    var ct = document.getElementById(cid); ct.innerHTML = '';
+    var el = document.createElement('canvas'); el.id = 'fabric-canvas'; el.width = dispW; el.height = dispH;
+    ct.appendChild(el);
+    _cv = new fabric.Canvas(el, { width:dispW, height:dispH, backgroundColor:'transparent', isDrawingMode:false, selection:false });
+    // Store original image dimensions on canvas for export
+    _cv._origW = imgW;
+    _cv._origH = imgH;
+    _cv._origUrl = url;
+
+    var fi = new fabric.Image(img, {
+      scaleX: 1, scaleY: 1,
+      originX: 'center', originY: 'center',
+      left: dispW / 2, top: dispH / 2,
+      selectable: false, evented: false
+    });
     _cv.setBackgroundImage(fi, _cv.renderAll.bind(_cv));
     saveState();
   };
   img.src = url;
+
+  // ... rest of event handlers unchanged
   _cv.on('object:modified', saveState);
   _cv.on('path:created', function(ev) {
     if (_tool === 'arrow') addArrow(ev);
@@ -1525,12 +1545,121 @@ function saveEditor() {
 }
 
 function doneEditing() {
-  _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.92 });
-  closeEditor();
-  // Show preview again with the edited image, then auto-keep
-  document.getElementById('previewImage').src = _pendingDataUrl;
-  keepPhoto();
-  // V6: Auto-jump moved to keepPhoto()
+  // Export at original image dimensions
+  if (!_cv || !_cv._origW || !_cv._origH) {
+    // Fallback to old method
+    _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.92 });
+    closeEditor();
+    document.getElementById('previewImage').src = _pendingDataUrl;
+    keepPhoto();
+    return;
+  }
+
+  var origW = _cv._origW;
+  var origH = _cv._origH;
+  var origUrl = _cv._origUrl;
+
+  // Create offscreen canvas at original image dimensions
+  var exportCanvas = document.createElement('canvas');
+  exportCanvas.width = _cv._origW;
+  exportCanvas.height = _cv._origH;
+  var ctx = exportCanvas.getContext('2d');
+
+  // Load original image
+  var origImg = new Image();
+  origImg.onload = function() {
+    // 1. Draw original image at full size
+    ctx.drawImage(origImg, 0, 0, origW, origH);
+
+    // 2. Calculate scale factor between display canvas and original
+    var scaleX = origW / _cv.width;
+    var scaleY = origH / _cv.height;
+
+    // 3. Draw all Fabric objects onto export canvas
+    var objects = _cv.getObjects();
+    for (var i = 0; i < objects.length; i++) {
+      var obj = objects[i];
+      if (obj === _cv.backgroundImage) continue; // Skip background image
+
+      ctx.save();
+      // Transform to original scale
+      ctx.translate(obj.left * scaleX, obj.top * scaleY);
+      ctx.rotate(fabric.util.degreesToRadians(obj.angle));
+      ctx.scale(obj.scaleX * scaleX, obj.scaleY * scaleY);
+
+      if (obj.type === 'line') {
+        var x1 = -obj.width / 2, y1 = -obj.height / 2;
+        var x2 = obj.width / 2, y2 = obj.height / 2;
+        ctx.strokeStyle = obj.stroke;
+        ctx.lineWidth = obj.strokeWidth;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      } else if (obj.type === 'ellipse' || obj.type === 'circle') {
+        ctx.strokeStyle = obj.stroke;
+        ctx.lineWidth = obj.strokeWidth;
+        var rx = obj.rx || obj.width / 2;
+        var ry = obj.ry || obj.height / 2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (obj.type === 'rect') {
+        if (obj.strokeDashArray && obj.strokeDashArray.length > 0) {
+          // Crop rect - dashed
+          ctx.strokeStyle = obj.stroke;
+          ctx.lineWidth = obj.strokeWidth;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeRect(-obj.width/2, -obj.height/2, obj.width, obj.height);
+        } else {
+          ctx.strokeStyle = obj.stroke;
+          ctx.lineWidth = obj.strokeWidth;
+          ctx.strokeRect(-obj.width/2, -obj.height/2, obj.width, obj.height);
+        }
+      } else if (obj.type === 'path') {
+        // Free drawing / pen
+        ctx.strokeStyle = obj.stroke;
+        ctx.lineWidth = obj.strokeWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        var path = obj.path;
+        for (var j = 0; j < path.length; j++) {
+          var seg = path[j];
+          if (seg[0] === 'M') {
+            ctx.moveTo(seg[1], seg[2]);
+          } else if (seg[0] === 'L') {
+            ctx.lineTo(seg[1], seg[2]);
+          } else if (seg[0] === 'C') {
+            ctx.bezierCurveTo(seg[1], seg[2], seg[3], seg[4], seg[5], seg[6]);
+          } else if (seg[0] === 'Q') {
+            ctx.quadraticCurveTo(seg[1], seg[2], seg[3], seg[4]);
+          }
+        }
+        ctx.stroke();
+      } else if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+        // Text
+        ctx.font = (obj.fontSize || 20) * scaleX + 'px ' + (obj.fontFamily || 'Arial');
+        ctx.fillStyle = obj.fill || '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obj.text || '', 0, 0);
+      } else if (obj.type === 'image') {
+        // Stickers / added images
+        if (obj._element) {
+          ctx.drawImage(obj._element, -obj.width/2, -obj.height/2, obj.width, obj.height);
+        }
+      }
+      ctx.restore();
+    }
+
+    // 4. Export
+    _pendingDataUrl = exportCanvas.toDataURL('image/jpeg', 0.92);
+    closeEditor();
+    document.getElementById('previewImage').src = _pendingDataUrl;
+    keepPhoto();
+  };
+  origImg.src = _cv._origUrl;
 }
 
 function closeEditor() {
