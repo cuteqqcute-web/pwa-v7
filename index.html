@@ -1569,8 +1569,7 @@ async function checkSavedState() {
   var saved = await restoreStateFromIndexedDB();
   if (!saved) return;
   if (!saved.photos || saved.photos.length === 0) return;
-  var shouldRestore = confirm('偵測到上次未完成的進度（' + saved.photos.length + ' 張照片）。
-是否恢復？');
+  var shouldRestore = confirm('Restore previous session (' + saved.photos.length + ' photos)?');
   if (shouldRestore) {
     if (saved.restaurant) {
       _restaurant = saved.restaurant;
@@ -1615,8 +1614,7 @@ async function checkSavedState() {
   var saved = await restoreStateFromIndexedDB();
   if (!saved) return;
   if (!saved.photos || saved.photos.length === 0) return;
-  var shouldRestore = confirm('偵測到上次未完成的進度（' + saved.photos.length + ' 張照片）。
-是否恢復？');
+  var shouldRestore = confirm('Restore previous session (' + saved.photos.length + ' photos)?');
   if (shouldRestore) {
     if (saved.restaurant) {
       _restaurant = saved.restaurant;
