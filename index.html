@@ -1275,7 +1275,7 @@ function generateReport() {
       rs.textContent = '⏳ 解析模板...';
       var ExcelJS = window.ExcelJS;
       var wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(templateBuffer.buffer);
+      await wb.xlsx.load(templateBuffer);
       var sheet = wb.getWorksheet(1) || wb.worksheets[0];
 
       var dMap = {};
