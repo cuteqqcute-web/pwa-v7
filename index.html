@@ -1815,17 +1815,32 @@ async function checkSavedState() {
   }
 }
 
+function initRestaurant() {
+  var sel = document.getElementById('restaurantSelect');
+  if (!sel) { setTimeout(initRestaurant, 100); return; }
+  sel.innerHTML = '<option value="">— 請選擇 —</option>';
+  for (var i = 0; i < RS.length; i++) {
+    var o = document.createElement('option');
+    o.value = RS[i].code;
+    o.textContent = RS[i].code + ' ' + RS[i].name;
+    sel.appendChild(o);
+  }
+}
+
 function setup() {
   if (_ini) return; _ini = true;
   initRestaurant();
   bindButtons();
   var s = document.getElementById('restaurantSelect');
   if (s) s.addEventListener('change', onRestaurantChange);
-  // V7: Auto-restore saved state after setup
   setTimeout(checkSavedState, 300);
 }
 
-document.addEventListener('DOMContentLoaded', setup);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setup);
+} else {
+  setup();
+}
 </script>
 
 </body>
