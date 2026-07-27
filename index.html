@@ -1,0 +1,282 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>設備維護師日巡系統 V7-POC</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;background:#f5f5f7;color:#1d1d1f;display:flex;flex-direction:column;align-items:center;padding:20px}
+.card{background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);width:100%;max-width:430px;padding:24px;margin:0 auto}
+h1{font-size:1.35rem;font-weight:700;margin-bottom:8px;color:#1d1d1f}
+.subtitle{font-size:.8125rem;color:#86868b;margin-bottom:20px}
+.section{margin-bottom:16px}
+label{display:block;font-size:.8125rem;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+input[type=file]{width:100%;padding:12px;font-size:.9375rem;border:2px solid #e5e5ea;border-radius:12px;background:#fff;margin-bottom:8px}
+.btn{display:block;width:100%;padding:14px;font-size:1rem;font-weight:600;color:#fff;background:#0071e3;border:none;border-radius:12px;cursor:pointer;margin-bottom:8px}
+.btn:active{background:#005bb5}
+.btn.orange{background:#ff9500}
+.btn.orange:active{background:#e08600}
+.btn.green{background:#34c759}
+.btn.green:active{background:#28a745}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.status{margin-top:12px;padding:12px;background:#f9f9fb;border-radius:12px;font-size:.9375rem;color:#86868b;min-height:48px;display:flex;align-items:center;justify-content:center;text-align:center}
+.status.ok{color:#34c759;background:#f0fff4}
+.status.err{color:#dc3545;background:#fff0f0}
+.progress{margin-top:8px;height:4px;background:#e5e5ea;border-radius:2px;overflow:hidden}
+.progress-bar{height:100%;background:#0071e3;transition:width .3s;width:0}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>📊 日巡報告 V7-POC</h1>
+<div class="subtitle">ExcelJS 瀏覽器端完美置中測試</div>
+
+<div class="section">
+<label>1. 選擇 Excel 模板 (.xlsx)</label>
+<input type="file" id="templateInput" accept=".xlsx">
+</div>
+
+<div class="section">
+<label>2. 選擇照片 (可多選)</label>
+<input type="file" id="photoInput" accept="image/*" multiple>
+</div>
+
+<div class="section">
+<label>3. 目標儲存格（例如 K3）</label>
+<input type="text" id="targetCell" value="K3" style="width:100%;padding:12px;font-size:1rem;border:2px solid #e5e5ea;border-radius:12px">
+</div>
+
+<button class="btn green" id="generateBtn" disabled>🚀 生成報告（完美置中）</button>
+
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+<div class="status" id="status">請依序選擇模板與照片</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+var _templateBuffer = null;
+var _photos = [];
+
+// EMU constants
+var EMU_PER_CM = 360000;
+var EMU_PER_PT = 12700;
+var EMU_PER_PX = 9525;
+var MARGIN_EMU = 90000; // 0.25cm
+
+// Convert column letter to 1-based number (A=1, B=2, K=11)
+function colToNum(col) {
+  var n = 0;
+  for (var i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
+  return n;
+}
+
+// Extract row number from cell ref (e.g. "K3" -> 3)
+function rowFromCell(ref) {
+  var m = ref.match(/(\d+)$/);
+  return m ? parseInt(m[1]) : 1;
+}
+
+// Extract column letter from cell ref (e.g. "K3" -> "K")
+function colFromCell(ref) {
+  var m = ref.match(/^([A-Z]+)/);
+  return m ? m[1] : 'A';
+}
+
+// Get image dimensions from base64 data
+function getImageSize(dataUrl) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() { resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = function() { resolve({ w: 384, h: 606 }); };
+    img.src = dataUrl;
+  });
+}
+
+// Calculate perfect centering EMU offsets
+function calcCentering(cellWidthEmu, cellHeightEmu, photoW, photoH) {
+  var maxRenderH = 2250780; // 6.25cm
+  var maxRenderW = cellWidthEmu - MARGIN_EMU * 2;
+  var availH = cellHeightEmu - MARGIN_EMU * 2;
+
+  var aspect = photoW / photoH;
+  var renderH, renderW;
+
+  if (photoW > photoH) {
+    // Landscape
+    renderW = maxRenderW;
+    renderH = Math.round(renderW / aspect);
+    if (renderH > availH) { renderH = availH; renderW = Math.round(renderH * aspect); }
+    var offX = MARGIN_EMU;
+    var offY = Math.floor((cellHeightEmu - renderH) / 2);
+  } else if (photoH > photoW) {
+    // Portrait
+    renderH = Math.min(maxRenderH, availH);
+    renderW = Math.round(renderH * aspect);
+    if (renderW > maxRenderW) { renderW = maxRenderW; renderH = Math.round(renderW / aspect); }
+    var offX = Math.floor((cellWidthEmu - renderW) / 2);
+    var offY = MARGIN_EMU;
+  } else {
+    // Square
+    var side = Math.min(maxRenderW, availH);
+    renderW = renderH = side;
+    offX = Math.floor((cellWidthEmu - side) / 2);
+    offY = Math.floor((cellHeightEmu - side) / 2);
+  }
+
+  return { renderW: renderW, renderH: renderH, offX: offX, offY: offY };
+}
+
+// Convert Excel column width to EMU
+// Formula: px = floor(width * 7 + 5); EMU = px * 9525
+function colWidthToEmu(width) {
+  var px = Math.floor(width * 7 + 5);
+  return px * EMU_PER_PX;
+}
+
+// Convert row height (pt) to EMU
+function rowHeightToEmu(heightPt) {
+  return Math.round(heightPt * EMU_PER_PT);
+}
+
+document.getElementById('templateInput').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    _templateBuffer = ev.target.result;
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('photoInput').addEventListener('change', function(e) {
+  var files = e.target.files;
+  if (!files.length) return;
+  _photos = [];
+  var loaded = 0;
+  for (var i = 0; i < files.length; i++) {
+    (function(f) {
+      var reader2 = new FileReader();
+      reader2.onload = function(ev2) {
+        _photos.push({ name: f.name, dataUrl: ev2.target.result, base64: ev2.target.result.split(',')[1] });
+        loaded++;
+        if (loaded === files.length) {
+          setStatus('已載入 ' + _photos.length + ' 張照片', '');
+          checkReady();
+        }
+      };
+      reader2.readAsDataURL(f);
+    })(files[i]);
+  }
+});
+
+function checkReady() {
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = !(_templateBuffer && _photos.length > 0);
+  if (_templateBuffer && _photos.length > 0) {
+    setStatus('準備就緒！點擊生成按鈕', '');
+  }
+}
+
+function setStatus(msg, type) {
+  var s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = 'status' + (type ? ' ' + type : '');
+}
+
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+document.getElementById('generateBtn').addEventListener('click', async function() {
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = '⏳ 生成中...';
+  setStatus('正在讀取模板...', '');
+  setProgress(10);
+
+  try {
+    var ExcelJS = window.ExcelJS;
+    var wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(_templateBuffer);
+
+    var sheet = wb.getWorksheet(1) || wb.worksheets[0];
+    var targetRef = document.getElementById('targetCell').value || 'K3';
+    var colLetter = colFromCell(targetRef);
+    var rowNum = rowFromCell(targetRef);
+    var colNum = colToNum(colLetter);
+
+    // Get cell dimensions
+    var col = sheet.getColumn(colNum);
+    var row = sheet.getRow(rowNum);
+    var cellWidthEmu = colWidthToEmu(col.width || 8.43);
+    var cellHeightEmu = rowHeightToEmu(row.height || 191.4);
+
+    setStatus('模板讀取完成，開始插入照片...', '');
+    setProgress(30);
+
+    // Insert each photo
+    for (var i = 0; i < _photos.length; i++) {
+      var photo = _photos[i];
+      var size = await getImageSize(photo.dataUrl);
+      var centering = calcCentering(cellWidthEmu, cellHeightEmu, size.w, size.h);
+
+      // ExcelJS addImage: uses image base64 and anchor
+      var imageId = wb.addImage({
+        base64: photo.base64,
+        extension: 'jpeg'
+      });
+
+      // Use tl (top-left) anchor with offsets for centering
+      var currentRow = rowNum + Math.floor(i / 7);
+      var currentCol = colNum + (i % 7);
+
+      sheet.addImage(imageId, {
+        tl: { col: currentCol - 1, row: currentRow - 1, colOff: centering.offX, rowOff: centering.offY },
+        br: {
+          col: currentCol - 1,
+          row: currentRow - 1,
+          colOff: centering.offX + centering.renderW,
+          rowOff: centering.offY + centering.renderH
+        },
+        editAs: 'oneCell'
+      });
+
+      setProgress(30 + Math.round((i + 1) / _photos.length * 60));
+      setStatus('已插入 ' + (i + 1) + '/' + _photos.length + ' 張照片', '');
+    }
+
+    setProgress(90);
+    setStatus('正在打包 Excel 檔案...', '');
+
+    // Generate output buffer
+    var buffer = await wb.xlsx.writeBuffer();
+
+    // Create download link
+    var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'report_v7.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+    setProgress(100);
+    setStatus('✅ 報告生成完成！已開始下載。', 'ok');
+    btn.disabled = false;
+    btn.textContent = '🚀 生成報告（完美置中）';
+
+  } catch (err) {
+    setStatus('❌ 錯誤: ' + err.message, 'err');
+    btn.disabled = false;
+    btn.textContent = '🚀 生成報告（完美置中）';
+    setProgress(0);
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>
