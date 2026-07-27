@@ -577,12 +577,14 @@ function prevPage() {
 // PAGE 1: RESTAURANT SELECTION
 // ============================================================
 function initRestaurant() {
-  var s = document.getElementById('restaurantSelect');
+  var sel = document.getElementById('restaurantSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— 請選擇 —</option>';
   for (var i = 0; i < RS.length; i++) {
     var o = document.createElement('option');
     o.value = RS[i].code;
     o.textContent = RS[i].code + ' ' + RS[i].name;
-    s.appendChild(o);
+    sel.appendChild(o);
   }
 }
 
@@ -1765,10 +1767,9 @@ async function checkSavedState() {
     if (saved.restaurant) {
       _restaurant = saved.restaurant;
       var sel = document.getElementById('restaurantSelect');
-      for (var i = 0; i < RS.length; i++) {
-        if (RS[i].code === _restaurant.code) { sel.value = i; break; }
-      }
-      updateRestaurantDisplay();
+      if (sel) sel.value = _restaurant.code;
+      var re = document.getElementById('result');
+      if (re) re.innerHTML = '<span class="selected">' + _restaurant.name + '</span><span class="code">' + _restaurant.code + '</span>';
     }
 
     // Restore photos
