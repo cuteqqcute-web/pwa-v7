@@ -1467,15 +1467,42 @@ function initEditor(url, cid) {
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) { _ds = null; return; }
     var c = editorColor.value, sz = +editorSize.value, sh;
     switch (_tool) {
-      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
-      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
-      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
+      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:true,evented:true,hasRotatingPoint:true}); break;
+      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,selectable:true,evented:true,hasRotatingPoint:true}); break;
+      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,selectable:true,evented:true,hasRotatingPoint:true}); break;
       case 'crop': if (_cr){_cv.remove(_cr);if(_hist.length>1)_hist.pop();} sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'rgba(255,255,255,0.08)',stroke:'#ff8906',strokeWidth:2,strokeDashArray:[6,4],hasRotatingPoint:false,selectable:true,evented:true}); _cr = sh; break;
     }
     _ds = null; if (sh) _cv.add(sh), saveState();
   });
   editorColor.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.color = this.value; };
   editorSize.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.width = +this.value; };
+
+  // V7: Double-click or long-press on text to edit
+  var _textEditTimer = null;
+  _cv.on('mouse:down', function(opt) {
+    if (!_cv) return;
+    var target = opt.target;
+    if (target && (target.type === 'i-text' || target.type === 'text' || target.type === 'textbox')) {
+      _textEditTimer = setTimeout(function() {
+        target.enterEditing();
+        _cv.setActiveObject(target);
+        target.selectAll();
+        _cv.renderAll();
+      }, 300); // Long press = 300ms
+    }
+  });
+  _cv.on('mouse:up', function(opt) {
+    if (_textEditTimer) { clearTimeout(_textEditTimer); _textEditTimer = null; }
+  });
+  _cv.on('mouse:dblclick', function(opt) {
+    var target = opt.target;
+    if (target && (target.type === 'i-text' || target.type === 'text' || target.type === 'textbox')) {
+      target.enterEditing();
+      _cv.setActiveObject(target);
+      target.selectAll();
+      _cv.renderAll();
+    }
+  });
 }
 
 function setTool(t) {
@@ -1511,7 +1538,7 @@ function addText() {
   if (!_cv) return;
   setTool(null);
   var t = prompt('請輸入文字：'); if (!t) return;
-  var tx = new fabric.IText(t, { left:_cv.width/2-40, top:_cv.height/2-15, fontSize:Math.max(+editorSize.value*12,28), fill:editorColor.value, fontFamily:'Arial,sans-serif' });
+  var tx = new fabric.IText(t, { left:_cv.width/2-40, top:_cv.height/2-15, fontSize:Math.max(+editorSize.value*12,28), fill:editorColor.value, fontFamily:'Arial,sans-serif', selectable:true, evented:true, hasRotatingPoint:true, lockUniScaling:false });
   _cv.add(tx); _cv.setActiveObject(tx); saveState();
 }
 
@@ -1527,7 +1554,8 @@ function undo() {
   _hist.pop();
   var bg = _editPhotoDataUrl;
   _cv.loadFromJSON(JSON.parse(_hist[_hist.length-1]), function() {
-    _cv.getObjects().forEach(function(o){ o.set({ selectable:false, evented:false }); });
+    // Keep objects selectable and rotatable
+    _cv.getObjects().forEach(function(o){ o.set({ selectable:true, evented:true, hasRotatingPoint:true }); });
     if (bg && !_cv.backgroundImage) {
       var w = _cv.width, h = _cv.height;
       fabric.Image.fromURL(bg, function(img) {
