@@ -1273,7 +1273,7 @@ function generateReport() {
       rs.textContent = '⏳ 解析模板...';
       var ExcelJS = window.ExcelJS;
       var wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(templateBuffer);
+      await wb.xlsx.load(templateBuffer.buffer);
       var sheet = wb.getWorksheet(1) || wb.worksheets[0];
 
       var dMap = {};
@@ -1562,12 +1562,76 @@ function bindButtons() {
   if (rb) rb.addEventListener('click', generateReport);
 }
 
+
+async function checkSavedState() {
+  var saved = await restoreStateFromIndexedDB();
+  if (!saved) return;
+  if (!saved.photos || saved.photos.length === 0) return;
+  var shouldRestore = confirm('偵測到上次未完成的進度（' + saved.photos.length + ' 張照片）。
+是否恢復？');
+  if (shouldRestore) {
+    if (saved.restaurant) {
+      _restaurant = saved.restaurant;
+      var sel = document.getElementById('restaurantSelect');
+      if (sel) sel.value = _restaurant.code;
+      var re = document.getElementById('result');
+      if (re) re.innerHTML = '<span class="selected">' + _restaurant.name + '</span><span class="code">' + _restaurant.code + '</span>';
+    }
+    _photos = saved.photos;
+    _photoSeq = saved.photoSeq || 0;
+    _currentPhotoIdx = saved.currentPhotoIdx || 0;
+    var classifiedCount = 0;
+    for (var j = 0; j < _photos.length; j++) { if (_photos[j].classified) classifiedCount++; }
+    if (classifiedCount === _photos.length && _photos.length > 0) {
+      goToPage(4);
+      refreshSummaryPage();
+    } else if (_photos.length > 0) {
+      goToPage(3);
+      refreshClassifyPage();
+    }
+  } else {
+    clearStoredState();
+  }
+}
+
 function setup() {
   if (_ini) return; _ini = true;
   initRestaurant();
   bindButtons();
   var s = document.getElementById('restaurantSelect');
   if (s) s.addEventListener('change', onRestaurantChange);
+}
+
+
+async function checkSavedState() {
+  var saved = await restoreStateFromIndexedDB();
+  if (!saved) return;
+  if (!saved.photos || saved.photos.length === 0) return;
+  var shouldRestore = confirm('偵測到上次未完成的進度（' + saved.photos.length + ' 張照片）。
+是否恢復？');
+  if (shouldRestore) {
+    if (saved.restaurant) {
+      _restaurant = saved.restaurant;
+      var sel = document.getElementById('restaurantSelect');
+      if (sel) sel.value = _restaurant.code;
+      var re = document.getElementById('result');
+      if (re) re.innerHTML = '<span class="selected">' + _restaurant.name + '</span><span class="code">' + _restaurant.code + '</span>';
+    }
+    _photos = saved.photos;
+    _photoSeq = saved.photoSeq || 0;
+    _currentPhotoIdx = saved.currentPhotoIdx || 0;
+    var classifiedCount = 0;
+    for (var j = 0; j < _photos.length; j++) { if (_photos[j].classified) classifiedCount++; }
+    if (classifiedCount === _photos.length && _photos.length > 0) {
+      goToPage(4);
+      refreshSummaryPage();
+    } else if (_photos.length > 0) {
+      goToPage(3);
+      refreshClassifyPage();
+    }
+  } else {
+    clearStoredState();
+  }
 }
 
 function setup() {
