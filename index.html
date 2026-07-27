@@ -137,7 +137,7 @@
     .report-status{margin-top:8px;text-align:center;font-size:.875rem;display:none;padding:10px;border-radius:8px}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -405,138 +405,7 @@ var _currentGroupKey = null;  // Currently selected group
 var _currentGroupLabel = null;
 var _currentDevice = null;    // Currently selected device
 var _currentAbnormal = null;  // Currently selected abnormal label
-var _pendingDataUrl = null;   // Photo wait
-
-// ============================================================
-// MODULE 0: INDEXEDDB PERSISTENCE (自動儲存/恢復模組)
-// ============================================================
-var _db = null;
-var DB_NAME = 'v7_daily_inspection';
-var DB_VERSION = 1;
-
-function openDB() {
-  return new Promise(function(resolve, reject) {
-    if (_db) { resolve(_db); return; }
-    var req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = function(e) {
-      var db = e.target.result;
-      if (!db.objectStoreNames.contains('state')) {
-        db.createObjectStore('state', { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = function(e) { _db = e.target.result; resolve(_db); };
-    req.onerror = function(e) { reject(e.target.error); };
-  });
-}
-
-function dbPut(db, key, val) {
-  return new Promise(function(resolve, reject) {
-    var tx = db.transaction('state', 'readwrite');
-    var store = tx.objectStore('state');
-    store.put({ key: key, value: val });
-    tx.oncomplete = function() { resolve(); };
-    tx.onerror = function(e) { reject(e.target.error); };
-  });
-}
-
-function dbGet(db, key) {
-  return new Promise(function(resolve, reject) {
-    var tx = db.transaction('state', 'readonly');
-    var store = tx.objectStore('state');
-    var req = store.get(key);
-    req.onsuccess = function(e) { resolve(e.target.result ? e.target.result.value : null); };
-    req.onerror = function(e) { reject(e.target.error); };
-  });
-}
-
-// Save entire app state to IndexedDB (call after every key action)
-function saveStateToIndexedDB() {
-  openDB().then(function(db) {
-    var data = {
-      restaurant: _restaurant,
-      photos: _photos.map(function(p) {
-        return {
-          dataUrl: p.dataUrl,
-          fileName: p.fileName || '',
-          groupKey: p.groupKey || '',
-          groupLabel: p.groupLabel || '',
-          device: p.device || '',
-          abnormal: p.abnormal || '',
-          classified: p.classified || false,
-          uploaded: p.uploaded || false
-        };
-      }),
-      photoSeq: _photoSeq || 0,
-      currentPhotoIdx: _currentPhotoIdx,
-      savedAt: new Date().toISOString()
-    };
-    return dbPut(db, 'v7state', data);
-  }).catch(function(e) {
-    // Fallback to localStorage
-    try {
-      var data = {
-        restaurant: _restaurant,
-        photos: _photos.map(function(p) {
-          return {
-            dataUrl: p.dataUrl,
-            fileName: p.fileName || '',
-            groupKey: p.groupKey || '',
-            groupLabel: p.groupLabel || '',
-            device: p.device || '',
-            abnormal: p.abnormal || '',
-            classified: p.classified || false,
-            uploaded: p.uploaded || false
-          };
-        }),
-        photoSeq: _photoSeq || 0,
-        currentPhotoIdx: _currentPhotoIdx,
-        w: new Date().toISOString()
-      };
-      localStorage.setItem(DB_NAME, JSON.stringify(data));
-    } catch(e2) { /* silent */ }
-  });
-}
-
-// Restore: load state on page open
-async function restoreStateFromIndexedDB() {
-  var db;
-  try { db = await openDB(); db = db; }
-  catch(e) { return; }
-
-  try {
-    var data = await dbGet(db, 'videos');
-    if (data && data.photos && data.photos.length > 0) {
-      return data;
-    }
-  } catch(e) {}
-
-  // Fallback: try localStorage
-  try {
-    var raw = localStorage.getItem(DB_NAME);
-    if (raw) {
-      var d = JSON.parse(raw);
-      if (d && d.photos && d.photos.length > 0) return d;
-    }
-  } catch(e) {}
-  return null;
-}
-
-// Clear stored state (after successful report generation)
-function clearStoredState() {
-  localStorage.removeItem(DB_NAME);
-  openDB().then(function(db) {
-    var tx = db.transaction('state', 'readwrite');
-    tx.objectStore('state').delete('videos');
-    tx.oncomplete = function() {};
-  }).catch(function() {});
-}
-
-// Auto-save after every classification
-function _autoSave() {
-  setTimeout(function() {
-    saveStateToIndexedDB();
-  }, 100);
-}ing in preview
+var _pendingDataUrl = null;   // Photo waiting in preview
 var _editPhotoIdx = -1;       // Index of photo being edited (-1 for new)
 var _editPhotoDataUrl = null; // DataUrl being edited
 var _photoSeq = 0;            // Sequence counter for genFN
@@ -577,14 +446,12 @@ function prevPage() {
 // PAGE 1: RESTAURANT SELECTION
 // ============================================================
 function initRestaurant() {
-  var sel = document.getElementById('restaurantSelect');
-  if (!sel) { setTimeout(initRestaurant, 100); return; }
-  sel.innerHTML = '<option value="">— 請選擇 —</option>';
+  var s = document.getElementById('restaurantSelect');
   for (var i = 0; i < RS.length; i++) {
     var o = document.createElement('option');
     o.value = RS[i].code;
     o.textContent = RS[i].code + ' ' + RS[i].name;
-    sel.appendChild(o);
+    s.appendChild(o);
   }
 }
 
@@ -637,6 +504,7 @@ function keepPhoto() {
   _pendingDataUrl = null;
   _editPhotoIdx = -1;
   renderPhotoGrid();
+  _autoSave();
 
   // V6: Continue-next mode (triggered from "繼續下一張" on Step 3)
   if (_continueNextMode) {
@@ -659,9 +527,6 @@ function keepPhoto() {
     _currentPhotoIdx = _photos.length - 1;
     goToPage(3);
   }
-
-  // V7: Auto-save after photo added
-  _autoSave();
 }
 
 function tossPhoto() {
@@ -681,6 +546,7 @@ function deletePhoto(idx) {
   if (confirm('確定刪除這張照片？')) {
     _photos.splice(idx, 1);
     renderPhotoGrid();
+  _autoSave();
   }
 }
 
@@ -747,6 +613,7 @@ function showClassifySubPage(n) {
 function refreshClassifyPage() {
   renderClassifyPhotoStrip();
   updateClassifyProgress();
+  _autoSave();
   // If all photos are classified, show the "all done" state but don't auto-jump
   // (user may have navigated back to reclassify)
   var allDone = _photos.length > 0;
@@ -832,6 +699,7 @@ function selectClassifyPhoto(idx) {
 
   renderClassifyPhotoStrip();
   updateClassifyProgress();
+  _autoSave();
 }
 
 function buildGroupButtons() {
@@ -996,6 +864,7 @@ function confirmClassify() {
 
   renderClassifyPhotoStrip();
   updateClassifyProgress();
+  _autoSave();
 
   // V6: Always show "📷 繼續下一張"; if allDone, also show "📋 完成，去預覽"
   var classifiedCount = 0;
@@ -1026,9 +895,6 @@ function confirmClassify() {
     if (_photos[j].classified && !_photos[j].uploaded) unuploaded++;
   }
   if (unuploaded >= 5) autoUploadPhotos();
-
-  // V7: Auto-save after classification
-  _autoSave();
 }
 
 // V6: Hide all classification sub-pages
@@ -1063,6 +929,7 @@ function advanceToNextUnclassified() {
     hideAllClassifySections();
     renderClassifyPhotoStrip();
     updateClassifyProgress();
+  _autoSave();
     setTimeout(function(){ goToPage(4); }, 800);
   } else if (!found) {
     // No photos at all
@@ -1206,48 +1073,132 @@ function shareAll() {
     });
 }
 
+
 // ============================================================
-// GENERATE REPORT (V7: Pure browser-side ExcelJS with perfect centering)
+// MODULE 0: INDEXEDDB PERSISTENCE (自動儲存/恢復模組)
 // ============================================================
-var TEMPLATE_URL = 'template.xlsx';
-var PHOTOS_PER_ROW = 7;
-var PHOTO_COLS = 'KLMNOPQ';
-var EMU_PER_PX = 9525;
-var EMU_PER_PT = 12700;
-var MARGIN_EMU = 90000;
+var _db = null;
+var DB_NAME = 'v7_daily_inspection';
+var DB_VERSION = 1;
 
-function colToNum(col) {
-  var n = 0;
-  for (var i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
-  return n;
-}
-
-function normalize(s) {
-  return s.replace(/[\s/&及\-()（）]/g, '').toLowerCase();
-}
-
-function colWidthToEmu(w) { return Math.floor(w * 7 + 5) * EMU_PER_PX; }
-function rowHeightToEmu(h) { return Math.round(h * EMU_PER_PT); }
-
-function calcCentering(cellW, cellH, pw, ph) {
-  var maxH = 2250780, maxW = cellW - MARGIN_EMU * 2, avH = cellH - MARGIN_EMU * 2;
-  var asp = pw / ph, rw, rh, ox, oy;
-  if (pw > ph) { rw = maxW; rh = Math.round(rw / asp); if (rh > avH) { rh = avH; rw = Math.round(rh * asp); } ox = MARGIN_EMU; oy = Math.floor((cellH - rh) / 2); }
-  else if (ph > pw) { rh = Math.min(maxH, avH); rw = Math.round(rh * asp); if (rw > maxW) { rw = maxW; rh = Math.round(rw / asp); } ox = Math.floor((cellW - rw) / 2); oy = MARGIN_EMU; }
-  else { var s = Math.min(maxW, avH); rw = rh = s; ox = Math.floor((cellW - s) / 2); oy = Math.floor((cellH - s) / 2); }
-  return { rw: rw, rh: rh, ox: ox, oy: oy };
-}
-
-function getImageSize(dataUrl) {
-  return new Promise(function(res) {
-    var img = new Image();
-    img.onload = function() { res({ w: img.naturalWidth, h: img.naturalHeight }); };
-    img.onerror = function() { res({ w: 384, h: 606 }); };
-    img.src = dataUrl;
+function openDB() {
+  return new Promise(function(resolve, reject) {
+    if (_db) { resolve(_db); return; }
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('state')) {
+        db.createObjectStore('state', { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = function(e) { _db = e.target.result; resolve(_db); };
+    req.onerror = function(e) { reject(e.target.error); };
   });
 }
 
-async function generateReport() {
+function dbPut(db, key, val) {
+  return new Promise(function(resolve, reject) {
+    var tx = db.transaction('state', 'readwrite');
+    var store = tx.objectStore('state');
+    store.put({ key: key, value: val });
+    tx.oncomplete = function() { resolve(); };
+    tx.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+function dbGet(db, key) {
+  return new Promise(function(resolve, reject) {
+    var tx = db.transaction('state', 'readonly');
+    var store = tx.objectStore('state');
+    var req = store.get(key);
+    req.onsuccess = function(e) { resolve(e.target.result ? e.target.result.value : null); };
+    req.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+function saveStateToIndexedDB() {
+  openDB().then(function(db) {
+    var data = {
+      restaurant: _restaurant,
+      photos: _photos.map(function(p) {
+        return {
+          dataUrl: p.dataUrl,
+          fileName: p.fileName || '',
+          groupKey: p.groupKey || '',
+          groupLabel: p.groupLabel || '',
+          device: p.device || '',
+          abnormal: p.abnormal || '',
+          classified: p.classified || false,
+          uploaded: p.uploaded || false
+        };
+      }),
+      photoSeq: _photoSeq || 0,
+      currentPhotoIdx: _currentPhotoIdx,
+      savedAt: new Date().toISOString()
+    };
+    return dbPut(db, 'v7state', data);
+  }).catch(function(e) {
+    try {
+      var data = {
+        restaurant: _restaurant,
+        photos: _photos.map(function(p) {
+          return {
+            dataUrl: p.dataUrl,
+            fileName: p.fileName || '',
+            groupKey: p.groupKey || '',
+            groupLabel: p.groupLabel || '',
+            device: p.device || '',
+            abnormal: p.abnormal || '',
+            classified: p.classified || false,
+            uploaded: p.uploaded || false
+          };
+        }),
+        photoSeq: _photoSeq || 0,
+        currentPhotoIdx: _currentPhotoIdx,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(DB_NAME, JSON.stringify(data));
+    } catch(e2) {}
+  });
+}
+
+async function restoreStateFromIndexedDB() {
+  var db;
+  try { db = await openDB(); } catch(e) {}
+  if (db) {
+    try {
+      var data = await dbGet(db, 'v7state');
+      if (data && data.photos && data.photos.length > 0) return data;
+    } catch(e) {}
+  }
+  try {
+    var raw = localStorage.getItem(DB_NAME);
+    if (raw) {
+      var d = JSON.parse(raw);
+      if (d && d.photos && d.photos.length > 0) return d;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function clearStoredState() {
+  localStorage.removeItem(DB_NAME);
+  openDB().then(function(db) {
+    var tx = db.transaction('state', 'readwrite');
+    tx.objectStore('state').delete('v7state');
+  }).catch(function() {});
+}
+
+function _autoSave() {
+  setTimeout(saveStateToIndexedDB, 100);
+}
+
+
+// ============================================================
+// GENERATE REPORT (from V2)
+// ============================================================
+
+function generateReport() {
   var btn = document.getElementById('generateReportBtn');
   var rs = document.getElementById('reportStatus');
   rs.style.display = 'block';
@@ -1258,150 +1209,177 @@ async function generateReport() {
   btn.style.opacity = '0.5';
   btn.textContent = '⏳ 產生中...';
 
-  try {
-    // Group photos by device
-    var groups = {};
-    for (var i = 0; i < _photos.length; i++) {
-      var p = _photos[i];
-      if (!p.classified) continue;
-      var dev = p.device;
-      if (!groups[dev]) groups[dev] = { photos: [], abnormals: [] };
-      groups[dev].photos.push(p);
-      if (p.abnormal && p.abnormal !== '無異常' && groups[dev].abnormals.indexOf(p.abnormal) < 0) groups[dev].abnormals.push(p.abnormal);
-    }
-    var totalPhotos = 0;
-    for (var k in groups) totalPhotos += groups[k].photos.length;
-    if (totalPhotos === 0) { throw new Error('沒有已分類的照片'); }
+  (async function() {
+    try {
+      var TEMPLATE_URL = 'template.xlsx';
+      var PHOTOS_PER_ROW = 7;
+      var EMU_PER_PX = 9525;
+      var EMU_PER_PT = 12700;
+      var MARGIN_EMU = 90000;
 
-    // Load template from GitHub
-    rs.textContent = '⏳ 載入 Excel 模板...';
-    var resp = await fetch(TEMPLATE_URL);
-    if (!resp.ok) throw new Error('模板下載失敗 (' + resp.status + ')');
-    var templateBuffer = await resp.arrayBuffer();
-
-    rs.textContent = '⏳ 解析模板...';
-    var ExcelJS = window.ExcelJS;
-    var wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(templateBuffer);
-    var sheet = wb.getWorksheet(1) || wb.worksheets[0];
-
-    // Read D column values to build device-to-row map
-    var dMap = {};
-    sheet.eachRow(function(row, rowNum) {
-      var cell = row.getCell(4);
-      var val = cell.value;
-      if (val && typeof val === 'string' && val !== '項目' && val !== '休息') {
-        dMap[val] = rowNum;
-      }
-    });
-
-    // Match devices
-    var equipRow = {};
-    for (var dev in groups) {
-      var nd = normalize(dev);
-      for (var tv in dMap) {
-        var nt = normalize(tv);
-        if (nd === nt || (nd.length >= 2 && nt.indexOf(nd) >= 0) || (nt.length >= 2 && nd.indexOf(nt) >= 0)) {
-          equipRow[dev] = dMap[tv];
-          break;
-        }
-      }
-    }
-
-    rs.textContent = '⏳ 插入照片（完美置中）...';
-    var placed = 0;
-
-    for (var dev in groups) {
-      var baseRow = equipRow[dev];
-      if (!baseRow) continue;
-      var photos = groups[dev].photos;
-      var needRows = Math.ceil(photos.length / PHOTOS_PER_ROW);
-
-      // Insert extra rows if needed
-      if (needRows > 1) {
-        for (var r = 1; r < needRows; r++) {
-          sheet.insertRow(baseRow + r);
-          sheet.getRow(baseRow + r).height = 191.4;
-        }
+      function colToNum(col) {
+        var n = 0;
+        for (var i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
+        return n;
       }
 
-      // Get cell dimensions from column K (col 11) and the base row
-      var colK = sheet.getColumn(11);
-      var cellW = colWidthToEmu(colK.width || 8.43);
-      var rowEl = sheet.getRow(baseRow);
-      var cellH = rowHeightToEmu(rowEl.height || 191.4);
+      function normalize(s) {
+        return s.replace(/[\s/&及\-()（）]/g, '').toLowerCase();
+      }
 
-      // Insert photos with perfect centering
-      for (var j = 0; j < photos.length; j++) {
-        var photo = photos[j];
-        var size = await getImageSize(photo.dataUrl);
-        var c = calcCentering(cellW, cellH, size.w, size.h);
+      function colWidthToEmu(w) { return Math.floor(w * 7 + 5) * EMU_PER_PX; }
+      function rowHeightToEmu(h) { return Math.round(h * EMU_PER_PT); }
 
-        var photoRow = baseRow + Math.floor(j / PHOTOS_PER_ROW);
-        var photoCol = 11 + (j % PHOTOS_PER_ROW); // K=11
+      function calcCentering(cellW, cellH, pw, ph) {
+        var maxH = 2250780, maxW = cellW - MARGIN_EMU * 2, avH = cellH - MARGIN_EMU * 2;
+        var asp = pw / ph, rw, rh, ox, oy;
+        if (pw > ph) { rw = maxW; rh = Math.round(rw / asp); if (rh > avH) { rh = avH; rw = Math.round(rh * asp); } ox = MARGIN_EMU; oy = Math.floor((cellH - rh) / 2); }
+        else if (ph > pw) { rh = Math.min(maxH, avH); rw = Math.round(rh * asp); if (rw > maxW) { rw = maxW; rh = Math.round(rw / asp); } ox = Math.floor((cellW - rw) / 2); oy = MARGIN_EMU; }
+        else { var s = Math.min(maxW, avH); rw = rh = s; ox = Math.floor((cellW - s) / 2); oy = Math.floor((cellH - s) / 2); }
+        return { rw: rw, rh: rh, ox: ox, oy: oy };
+      }
 
-        // Convert base64 to buffer for ExcelJS
-        var b64 = photo.dataUrl.split(',')[1];
-        var binary = atob(b64);
-        var buf = new Uint8Array(binary.length);
-        for (var bi = 0; bi < binary.length; bi++) buf[bi] = binary.charCodeAt(bi);
-
-        var imageId = wb.addImage({ buffer: buf, extension: 'jpeg' });
-
-        sheet.addImage(imageId, {
-          tl: { col: photoCol - 1, row: photoRow - 1, colOff: c.ox, rowOff: c.oy },
-          br: { col: photoCol - 1, row: photoRow - 1, colOff: c.ox + c.rw, rowOff: c.oy + c.rh },
-          editAs: 'oneCell'
+      function getImageSize(dataUrl) {
+        return new Promise(function(res) {
+          var img = new Image();
+          img.onload = function() { res({ w: img.naturalWidth, h: img.naturalHeight }); };
+          img.onerror = function() { res({ w: 384, h: 606 }); };
+          img.src = dataUrl;
         });
-
-        placed++;
-        if (placed % 5 === 0) rs.textContent = '⏳ 插入照片 ' + placed + '/' + totalPhotos + '（完美置中）...';
       }
 
-      // Write J column with abnormals
-      var abnList = groups[dev].abnormals;
-      if (abnList.length > 0) {
-        var jv = abnList.map(function(a, idx) { return (idx + 1) + '.' + a; }).join('\n');
-        var jCell = sheet.getCell('J' + baseRow);
-        jCell.value = jv;
-        jCell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+      var groups = {};
+      for (var i = 0; i < _photos.length; i++) {
+        var p = _photos[i];
+        if (!p.classified) continue;
+        var dev = p.device;
+        if (!groups[dev]) groups[dev] = { photos: [], abnormals: [] };
+        groups[dev].photos.push(p);
+        if (p.abnormal && p.abnormal !== '無異常' && groups[dev].abnormals.indexOf(p.abnormal) < 0) groups[dev].abnormals.push(p.abnormal);
       }
+      var totalPhotos = 0;
+      for (var k in groups) totalPhotos += groups[k].photos.length;
+      if (totalPhotos === 0) { throw new Error('沒有已分類的照片'); }
+
+      rs.textContent = '⏳ 載入 Excel 模板...';
+      var resp = await fetch(TEMPLATE_URL);
+      if (!resp.ok) throw new Error('模板下載失敗 (' + resp.status + ')');
+      var templateBuffer = await resp.arrayBuffer();
+
+      rs.textContent = '⏳ 解析模板...';
+      var ExcelJS = window.ExcelJS;
+      var wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(templateBuffer);
+      var sheet = wb.getWorksheet(1) || wb.worksheets[0];
+
+      var dMap = {};
+      sheet.eachRow(function(row, rowNum) {
+        var cell = row.getCell(4);
+        var val = cell.value;
+        if (val && typeof val === 'string' && val !== '項目' && val !== '休息') {
+          dMap[val] = rowNum;
+        }
+      });
+
+      var equipRow = {};
+      for (var dev in groups) {
+        var nd = normalize(dev);
+        for (var tv in dMap) {
+          var nt = normalize(tv);
+          if (nd === nt || (nd.length >= 2 && nd.indexOf(nd) >= 0) || (nt.length >= 2 && nd.indexOf(nt) >= 0)) {
+            equipRow[dev] = dMap[tv];
+            break;
+          }
+        }
+      }
+
+      rs.textContent = '⏳ 插入照片（完美置中）...';
+      var placed = 0;
+
+      for (var dev in groups) {
+        var baseRow = equipRow[dev];
+        if (!baseRow) continue;
+        var photos = groups[dev].photos;
+        var needRows = Math.ceil(photos.length / PHOTOS_PER_ROW);
+
+        if (needRows > 1) {
+          for (var r = 1; r < needRows; r++) {
+            sheet.insertRow(baseRow + r);
+            sheet.getRow(baseRow + r).height = 191.4;
+          }
+        }
+
+        var colK = sheet.getColumn(11);
+        var cellW = colWidthToEmu(colK.width || 8.43);
+        var rowEl = sheet.getRow(baseRow);
+        var cellH = rowHeightToEmu(rowEl.height || 191.4);
+
+        for (var j = 0; j < photos.length; j++) {
+          var photo = photos[j];
+          var size = await getImageSize(photo.dataUrl);
+          var c = calcCentering(cellW, cellH, size.w, size.h);
+
+          var photoRow = baseRow + Math.floor(j / PHOTOS_PER_ROW);
+          var photoCol = 11 + (j % PHOTOS_PER_ROW);
+
+          var b64 = photo.dataUrl.split(',')[1];
+          var binary = atob(b64);
+          var buf = new Uint8Array(binary.length);
+          for (var bi = 0; bi < binary.length; bi++) buf[bi] = binary.charCodeAt(bi);
+
+          var imageId = wb.addImage({ buffer: buf, extension: 'jpeg' });
+
+          sheet.addImage(imageId, {
+            tl: { col: photoCol - 1, row: photoRow - 1, colOff: c.ox, rowOff: c.oy },
+            br: { col: photoCol - 1, row: photoRow - 1, colOff: c.ox + c.rw, rowOff: c.oy + c.rh },
+            editAs: 'oneCell'
+          });
+
+          placed++;
+          if (placed % 5 === 0) rs.textContent = '⏳ 插入照片 ' + placed + '/' + totalPhotos + '（完美置中）...';
+        }
+
+        var abnList = groups[dev].abnormals;
+        if (abnList.length > 0) {
+          var jv = abnList.map(function(a, idx) { return (idx + 1) + '.' + a; }).join('\n');
+          var jCell = sheet.getCell('J' + baseRow);
+          jCell.value = jv;
+          jCell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+        }
+      }
+
+      rs.textContent = '⏳ 打包 Excel 檔案...';
+      var outBuffer = await wb.xlsx.writeBuffer();
+      var blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = '日巡報告_' + (_restaurant ? _restaurant.code : '') + '.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+
+      rs.style.color = '#34c759';
+      rs.style.background = '#f0fff4';
+      rs.textContent = '✅ 報告已產出！' + placed + ' 張照片，完美置中完成。';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = '📊 產出日巡報告';
+
+      setTimeout(clearStoredState, 2000);
+      beep();
+    } catch (err) {
+      rs.style.color = '#dc3545';
+      rs.style.background = '#fff0f0';
+      rs.textContent = '❌ ' + err.message;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = '📊 產出日巡報告';
+      console.error(err);
     }
-
-    rs.textContent = '⏳ 打包 Excel 檔案...';
-    var outBuffer = await wb.xlsx.writeBuffer();
-    var blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = '日巡報告_' + (_restaurant ? _restaurant.code : '') + '.xlsx';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
-
-    rs.style.color = '#34c759';
-    rs.style.background = '#f0fff4';
-    rs.textContent = '✅ 報告已產出！' + placed + ' 張照片，完美置中完成。';
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    btn.textContent = '📊 產出日巡報告';
-
-    // V7: Clear stored state after successful report
-    setTimeout(clearStoredState, 2000);
-
-    beep();
-  } catch (err) {
-    rs.style.color = '#dc3545';
-    rs.style.background = '#fff0f0';
-    rs.textContent = '❌ ' + err.message;
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    btn.textContent = '📊 產出日巡報告';
-    console.error(err);
-  }
+  })();
 }
-
 // ============================================================
 // FABRIC.JS EDITOR (from V2)
 // ============================================================
@@ -1410,38 +1388,18 @@ var _tb = { pen:'btnPen', line:'btnLine', arrow:'btnArrow', circle:'btnCircle', 
 
 function initEditor(url, cid) {
   var ct = document.getElementById(cid); ct.innerHTML = '';
-  // Load image first to get natural dimensions
+  var w = Math.max(300, window.innerWidth), h = Math.max(300, window.innerHeight - 120);
+  var el = document.createElement('canvas'); el.id = 'fabric-canvas'; el.width = w; el.height = h;
+  ct.appendChild(el);
+  _cv = new fabric.Canvas(el, { width:w, height:h, backgroundColor:'#2a2a3e', isDrawingMode:false, selection:false });
   var img = new Image();
   img.onload = function() {
-    var imgW = img.naturalWidth, imgH = img.naturalHeight;
-    // Display canvas size: fit within viewport but keep aspect ratio
-    var maxW = Math.max(300, window.innerWidth - 20);
-    var maxH = Math.max(300, window.innerHeight - 150);
-    var scale = Math.min(maxW / imgW, maxH / imgH, 1);
-    var dispW = Math.round(imgW * scale);
-    var dispH = Math.round(imgH * scale);
-
-    var ct = document.getElementById(cid); ct.innerHTML = '';
-    var el = document.createElement('canvas'); el.id = 'fabric-canvas'; el.width = dispW; el.height = dispH;
-    ct.appendChild(el);
-    _cv = new fabric.Canvas(el, { width:dispW, height:dispH, backgroundColor:'transparent', isDrawingMode:false, selection:false });
-    // Store original image dimensions on canvas for export
-    _cv._origW = imgW;
-    _cv._origH = imgH;
-    _cv._origUrl = url;
-
-    var fi = new fabric.Image(img, {
-      scaleX: 1, scaleY: 1,
-      originX: 'center', originY: 'center',
-      left: dispW / 2, top: dispH / 2,
-      selectable: false, evented: false
-    });
+    var s = Math.min(w/img.width, h/img.height) * 0.95;
+    var fi = new fabric.Image(img, { scaleX:s, scaleY:s, originX:'center', originY:'center', left:w/2, top:h/2 });
     _cv.setBackgroundImage(fi, _cv.renderAll.bind(_cv));
     saveState();
   };
   img.src = url;
-
-  // ... rest of event handlers unchanged
   _cv.on('object:modified', saveState);
   _cv.on('path:created', function(ev) {
     if (_tool === 'arrow') addArrow(ev);
@@ -1469,42 +1427,15 @@ function initEditor(url, cid) {
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) { _ds = null; return; }
     var c = editorColor.value, sz = +editorSize.value, sh;
     switch (_tool) {
-      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:true,evented:true,hasRotatingPoint:true}); break;
-      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,selectable:true,evented:true,hasRotatingPoint:true}); break;
-      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,selectable:true,evented:true,hasRotatingPoint:true}); break;
+      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
+      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
+      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false}); break;
       case 'crop': if (_cr){_cv.remove(_cr);if(_hist.length>1)_hist.pop();} sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'rgba(255,255,255,0.08)',stroke:'#ff8906',strokeWidth:2,strokeDashArray:[6,4],hasRotatingPoint:false,selectable:true,evented:true}); _cr = sh; break;
     }
     _ds = null; if (sh) _cv.add(sh), saveState();
   });
   editorColor.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.color = this.value; };
   editorSize.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.width = +this.value; };
-
-  // V7: Double-click or long-press on text to edit
-  var _textEditTimer = null;
-  _cv.on('mouse:down', function(opt) {
-    if (!_cv) return;
-    var target = opt.target;
-    if (target && (target.type === 'i-text' || target.type === 'text' || target.type === 'textbox')) {
-      _textEditTimer = setTimeout(function() {
-        target.enterEditing();
-        _cv.setActiveObject(target);
-        target.selectAll();
-        _cv.renderAll();
-      }, 300); // Long press = 300ms
-    }
-  });
-  _cv.on('mouse:up', function(opt) {
-    if (_textEditTimer) { clearTimeout(_textEditTimer); _textEditTimer = null; }
-  });
-  _cv.on('mouse:dblclick', function(opt) {
-    var target = opt.target;
-    if (target && (target.type === 'i-text' || target.type === 'text' || target.type === 'textbox')) {
-      target.enterEditing();
-      _cv.setActiveObject(target);
-      target.selectAll();
-      _cv.renderAll();
-    }
-  });
 }
 
 function setTool(t) {
@@ -1540,7 +1471,7 @@ function addText() {
   if (!_cv) return;
   setTool(null);
   var t = prompt('請輸入文字：'); if (!t) return;
-  var tx = new fabric.IText(t, { left:_cv.width/2-40, top:_cv.height/2-15, fontSize:Math.max(+editorSize.value*12,28), fill:editorColor.value, fontFamily:'Arial,sans-serif', selectable:true, evented:true, hasRotatingPoint:true, lockUniScaling:false });
+  var tx = new fabric.IText(t, { left:_cv.width/2-40, top:_cv.height/2-15, fontSize:Math.max(+editorSize.value*12,28), fill:editorColor.value, fontFamily:'Arial,sans-serif' });
   _cv.add(tx); _cv.setActiveObject(tx); saveState();
 }
 
@@ -1556,8 +1487,7 @@ function undo() {
   _hist.pop();
   var bg = _editPhotoDataUrl;
   _cv.loadFromJSON(JSON.parse(_hist[_hist.length-1]), function() {
-    // Keep objects selectable and rotatable
-    _cv.getObjects().forEach(function(o){ o.set({ selectable:true, evented:true, hasRotatingPoint:true }); });
+    _cv.getObjects().forEach(function(o){ o.set({ selectable:false, evented:false }); });
     if (bg && !_cv.backgroundImage) {
       var w = _cv.width, h = _cv.height;
       fabric.Image.fromURL(bg, function(img) {
@@ -1575,121 +1505,12 @@ function saveEditor() {
 }
 
 function doneEditing() {
-  // Export at original image dimensions
-  if (!_cv || !_cv._origW || !_cv._origH) {
-    // Fallback to old method
-    _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.92 });
-    closeEditor();
-    document.getElementById('previewImage').src = _pendingDataUrl;
-    keepPhoto();
-    return;
-  }
-
-  var origW = _cv._origW;
-  var origH = _cv._origH;
-  var origUrl = _cv._origUrl;
-
-  // Create offscreen canvas at original image dimensions
-  var exportCanvas = document.createElement('canvas');
-  exportCanvas.width = _cv._origW;
-  exportCanvas.height = _cv._origH;
-  var ctx = exportCanvas.getContext('2d');
-
-  // Load original image
-  var origImg = new Image();
-  origImg.onload = function() {
-    // 1. Draw original image at full size
-    ctx.drawImage(origImg, 0, 0, origW, origH);
-
-    // 2. Calculate scale factor between display canvas and original
-    var scaleX = origW / _cv.width;
-    var scaleY = origH / _cv.height;
-
-    // 3. Draw all Fabric objects onto export canvas
-    var objects = _cv.getObjects();
-    for (var i = 0; i < objects.length; i++) {
-      var obj = objects[i];
-      if (obj === _cv.backgroundImage) continue; // Skip background image
-
-      ctx.save();
-      // Transform to original scale
-      ctx.translate(obj.left * scaleX, obj.top * scaleY);
-      ctx.rotate(fabric.util.degreesToRadians(obj.angle));
-      ctx.scale(obj.scaleX * scaleX, obj.scaleY * scaleY);
-
-      if (obj.type === 'line') {
-        var x1 = -obj.width / 2, y1 = -obj.height / 2;
-        var x2 = obj.width / 2, y2 = obj.height / 2;
-        ctx.strokeStyle = obj.stroke;
-        ctx.lineWidth = obj.strokeWidth;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      } else if (obj.type === 'ellipse' || obj.type === 'circle') {
-        ctx.strokeStyle = obj.stroke;
-        ctx.lineWidth = obj.strokeWidth;
-        var rx = obj.rx || obj.width / 2;
-        var ry = obj.ry || obj.height / 2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI);
-        ctx.stroke();
-      } else if (obj.type === 'rect') {
-        if (obj.strokeDashArray && obj.strokeDashArray.length > 0) {
-          // Crop rect - dashed
-          ctx.strokeStyle = obj.stroke;
-          ctx.lineWidth = obj.strokeWidth;
-          ctx.setLineDash([6, 4]);
-          ctx.strokeRect(-obj.width/2, -obj.height/2, obj.width, obj.height);
-        } else {
-          ctx.strokeStyle = obj.stroke;
-          ctx.lineWidth = obj.strokeWidth;
-          ctx.strokeRect(-obj.width/2, -obj.height/2, obj.width, obj.height);
-        }
-      } else if (obj.type === 'path') {
-        // Free drawing / pen
-        ctx.strokeStyle = obj.stroke;
-        ctx.lineWidth = obj.strokeWidth;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        var path = obj.path;
-        for (var j = 0; j < path.length; j++) {
-          var seg = path[j];
-          if (seg[0] === 'M') {
-            ctx.moveTo(seg[1], seg[2]);
-          } else if (seg[0] === 'L') {
-            ctx.lineTo(seg[1], seg[2]);
-          } else if (seg[0] === 'C') {
-            ctx.bezierCurveTo(seg[1], seg[2], seg[3], seg[4], seg[5], seg[6]);
-          } else if (seg[0] === 'Q') {
-            ctx.quadraticCurveTo(seg[1], seg[2], seg[3], seg[4]);
-          }
-        }
-        ctx.stroke();
-      } else if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-        // Text
-        ctx.font = (obj.fontSize || 20) * scaleX + 'px ' + (obj.fontFamily || 'Arial');
-        ctx.fillStyle = obj.fill || '#000000';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(obj.text || '', 0, 0);
-      } else if (obj.type === 'image') {
-        // Stickers / added images
-        if (obj._element) {
-          ctx.drawImage(obj._element, -obj.width/2, -obj.height/2, obj.width, obj.height);
-        }
-      }
-      ctx.restore();
-    }
-
-    // 4. Export
-    _pendingDataUrl = exportCanvas.toDataURL('image/jpeg', 0.92);
-    closeEditor();
-    document.getElementById('previewImage').src = _pendingDataUrl;
-    keepPhoto();
-  };
-  origImg.src = _cv._origUrl;
+  _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.92 });
+  closeEditor();
+  // Show preview again with the edited image, then auto-keep
+  document.getElementById('previewImage').src = _pendingDataUrl;
+  keepPhoto();
+  // V6: Auto-jump moved to keepPhoto()
 }
 
 function closeEditor() {
@@ -1737,100 +1558,12 @@ function bindButtons() {
   if (rb) rb.addEventListener('click', generateReport);
 }
 
-function initRestaurant() {
-  var sel = document.getElementById('restaurantSelect');
-  if (!sel) { setTimeout(initRestaurant, 100); return; }
-  sel.innerHTML = '<option value="">-- Select Restaurant --</option>';
-  for (var i = 0; i < RS.length; i++) {
-    var o = document.createElement('option');
-    o.value = RS[i].code;
-    o.textContent = RS[i].code + ' ' + RS[i].name;
-    sel.appendChild(o);
-  }
-}
-}
-
-// V7: Check for saved state on page load
-async function checkSavedState() {
-  var saved = await restoreStateFromIndexedDB();
-  if (!saved) return;
-
-  // Only restore if there are photos saved
-  if (!saved.photos || saved.photos.length === 0) return;
-
-  var shouldRestore = confirm('偵測到上次未完成的進度（' + saved.photos.length + ' 張照片，' + saved.savedAt.slice(0, 10) + '）。\n是否恢復？\n（按「取消」將清除舊資料重新開始）');
-
-  if (shouldRestore) {
-    // Restore restaurant
-    if (saved.restaurant) {
-      _restaurant = saved.restaurant;
-      var sel = document.getElementById('restaurantSelect');
-      if (sel) sel.value = _restaurant.code;
-      var re = document.getElementById('result');
-      if (re) re.innerHTML = '<span class="selected">' + _restaurant.name + '</span><span class="code">' + _restaurant.code + '</span>';
-    }
-
-    // Restore photos
-    _photos = saved.photos.map(function(p) {
-      return {
-        dataUrl: p.dataUrl,
-        fileName: p.fileName,
-        groupKey: p.groupKey,
-        groupLabel: p.groupLabel,
-        device: p.device,
-        abnormal: p.abnormal,
-        classified: p.classified,
-        uploaded: p.uploaded || false
-      };
-    });
-    _photoSeq = saved.photoSeq || 0;
-    _currentPhotoIdx = saved.currentPhotoIdx || 0;
-
-    // Navigate to Step 3 (classification) if photos are classified
-    var classifiedCount = 0;
-    for (var j = 0; j < _photos.length; j++) { if (_photos[j].classified) classifiedCount++; }
-    if (classifiedCount === _photos.length) {
-      goToPage(4);
-      refreshSummaryPage();
-    } else if (classifiedCount > 0 || _photos.length > 0) {
-      goToPage(3);
-      refreshClassifyPage();
-      renderPhotoGrid();
-      // Find first unclassified photo
-      for (var k = 0; k < _photos.length; k++) {
-        if (!_photos[k].classified) { selectClassifyPhoto(k); break; }
-      }
-    }
-  } else {
-    // User chose to clear
-    _photos = [];
-    _photoSeq = 0;
-    _currentPhotoIdx = -1;
-    _restaurant = null;
-    document.getElementById('restaurantSelect').value = '';
-    document.getElementById('result').innerHTML = '<span class=\\'placeholder\\'>尚未選擇</span>';
-    clearStoredState();
-  }
-}
-
-function initRestaurant() {
-  var sel = document.getElementById('restaurantSelect');
-  if (!sel) { setTimeout(initRestaurant, 100); return; }
-  sel.innerHTML = '<option value="">-- Select Restaurant --</option>';
-  for (var i = 0; i < RS.length; i++) {
-    var o = document.createElement('option');
-    o.value = RS[i].code;
-    o.textContent = RS[i].code + ' ' + RS[i].name;
-    sel.appendChild(o);
-  }
-}
-  sel.innerHTML = '<option value="">— 請選擇 —</option>';
-  for (var i = 0; i < RS.length; i++) {
-    var o = document.createElement('option');
-    o.value = RS[i].code;
-    o.textContent = RS[i].code + ' ' + RS[i].name;
-    sel.appendChild(o);
-  }
+function setup() {
+  if (_ini) return; _ini = true;
+  initRestaurant();
+  bindButtons();
+  var s = document.getElementById('restaurantSelect');
+  if (s) s.addEventListener('change', onRestaurantChange);
 }
 
 function setup() {
