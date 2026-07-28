@@ -44,7 +44,6 @@
     .camera-actions,.export-actions{display:flex;gap:10px}
     .camera-actions{margin-bottom:12px}
     .export-actions{margin-top:14px;flex-wrap:wrap}
-    .export-btn { padding: 10px; font-size: 12px; background: #eee; color: #333; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; width: 100%; margin-bottom: 5px; }
     .camera-btn,.export-btn{flex:1;padding:12px 8px;font-size:.9375rem;font-family:inherit;font-weight:600;color:#fff;border:none;border-radius:12px;cursor:pointer;transition:opacity .15s ease;-webkit-tap-highlight-color:transparent}
     .camera-btn{background:#0071e3}
     .camera-btn.album,.export-btn.save{background:#34c759}
@@ -1202,7 +1201,6 @@ function _autoSave() {
 // ============================================================
 
 function beep() {
-  // 預設使用方案 A
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -1214,16 +1212,6 @@ function beep() {
   gain.connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + 0.2);
-}
-
-function testSound(type) {
-  if (type === 'A') {
-    beep();
-  } else if (type === 'B') {
-    new Audio('https://actions.google.com/sounds/v1/notifications/beep.ogg').play();
-  } else if (type === 'C') {
-    new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-  }
 }
 
 function generateReport() {
