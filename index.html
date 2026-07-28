@@ -1224,7 +1224,7 @@ function generateReport() {
   rs.style.display = 'block';
   rs.style.color = '#86868b';
   rs.style.background = '#f9f9fb';
-  rs.textContent = '⏳ 準備雲端報告資料...';
+  rs.textContent = '⏳ 準備資料...';
   btn.disabled = true;
   btn.style.opacity = '0.5';
   btn.textContent = '⏳ 產出中...';
@@ -1250,12 +1250,7 @@ function generateReport() {
       for (var k in groups) totalPhotos += groups[k].photos.length;
       if (totalPhotos === 0) throw new Error('沒有已分類的照片');
 
-      rs.textContent = '⏳ 正在請求雲端產生報告...';
-      
-      var gasUrl = 'https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec';
-      
       var payload = {
-        action: 'generate_v7_report',
         restaurant: {
           name: _restaurant ? _restaurant.name : '未知餐廳',
           code: _restaurant ? _restaurant.code : 'S000'
@@ -1263,19 +1258,53 @@ function generateReport() {
         data: groups
       };
 
-      await fetch(gasUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify(payload)
-      });
+      rs.textContent = '⏳ 連線本地 Python 引擎 (localhost:8787)...';
 
-      rs.style.color = '#34c759';
-      rs.style.background = '#f0fff4';
-      rs.textContent = '✅ 請求已送出！請稍後在雲端確認或檢查下載。';
+      var pythonUrl = 'http://localhost:8787';
+      var response = null;
+      var usedBackend = 'local';
+
+      try {
+        response = await fetch(pythonUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('Local server returned ' + response.status);
+      } catch (localErr) {
+        rs.textContent = '⏳ 本地引擎未啟動，切換至 GAS 雲端模式...';
+        usedBackend = 'gas';
+        var gasUrl = 'https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec';
+        var gasPayload = Object.assign({ action: 'generate_v7_report' }, payload);
+        await fetch(gasUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(gasPayload)
+        });
+      }
+
+      if (usedBackend === 'local' && response) {
+        var result = await response.json();
+        if (result.success) {
+          rs.style.color = '#34c759';
+          rs.style.background = '#f0fff4';
+          rs.textContent = '✅ 報告已產出！' + (result.placed_photos || 0) + ' 張照片完美置中 ' +
+            (result.equipments_matched || 0) + ' 設備。\n存放位置: ' + (result.name || '');
+          if (result.unmatched && result.unmatched.length > 0) {
+            rs.textContent += '\n⚠ 未匹配設備: ' + result.unmatched.join(', ');
+          }
+        } else {
+          throw new Error(result.error || 'Python 引擎回報失敗');
+        }
+      } else {
+        rs.style.color = '#34c759';
+        rs.style.background = '#f0fff4';
+        rs.textContent = '✅ 請求已送至 GAS 雲端！請至 Google Drive 確認報告。';
+      }
+
       btn.disabled = false;
       btn.style.opacity = '1';
       btn.textContent = '📊 產出日巡報告';
-      
       beep();
     } catch (err) {
       rs.style.color = '#dc3545';
@@ -1287,7 +1316,9 @@ function generateReport() {
       console.error(err);
     }
   })();
-}// ============================================================
+} // ============================================================
+// FABRIC.JS EDITOR (from V2)
+// ============================================================// ============================================================
 // FABRIC.JS EDITOR (from V2)
 // ============================================================
 var _cv = null, _hist = [], _ds = null, _cr = null, _tool = null, _ts = null;
