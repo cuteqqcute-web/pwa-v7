@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <title>V7 提示音選擇測試</title>
+<head>
+    <title>V7 提示音選擇 (穩定合成版)</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -17,25 +18,19 @@
 </head>
 <body>
     <h1>🔊 V7 提示音選擇</h1>
+    <div class="section-title">全合成音 (100% 相容)</div>
     
-    <div class="section-title">合成音 (无需加载文件)</div>
     <div class="sound-card">
         <button onclick="playA()">方案 A</button>
-        <div class="desc">電子合成音 (簡潔嗶聲)</div>
+        <div class="desc">極簡電子 (經典嗶聲)</div>
     </div>
-    <div class="sound-card">
-        <button onclick="playF()">方案 F</button>
-        <div class="desc">極短快擊 (低調確認)</div>
-    </div>
-
-    <div class="section-title">音效檔 (需網路加載)</div>
     <div class="sound-card">
         <button onclick="playB()">方案 B</button>
-        <div class="desc">現代通知 (清脆叮聲)</div>
+        <div class="desc">現代通知 (清脆雙音)</div>
     </div>
     <div class="sound-card">
         <button onclick="playC()">方案 C</button>
-        <div class="desc">溫馨成功 (輕盈叮咚)</div>
+        <div class="desc">溫馨成功 (和諧叮咚)</div>
     </div>
     <div class="sound-card">
         <button onclick="playD()">方案 D</button>
@@ -43,32 +38,51 @@
     </div>
     <div class="sound-card">
         <button onclick="playE()">方案 E</button>
-        <div class="desc">亮眼提醒 (高頻清脆)</div>
+        <div class="desc">醒目提醒 (高頻提示)</div>
+    </div>
+    <div class="sound-card">
+        <button onclick="playF()">方案 F</button>
+        <div class="desc">低調確認 (極短擊發)</div>
     </div>
 
     <script>
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playSine(freq, duration, volume = 0.1) {
+        function playTone(freq, duration, volume = 0.1, type = 'sine', ramp = true) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
+            osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gain.gain.setValueAtTime(volume, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            if (ramp) {
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            }
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        function playA() { playSine(880, 0.2); }
-        function playF() { playSine(440, 0.05, 0.05); }
+        function playA() { playTone(880, 0.2); }
         
-        function playB() { new Audio('https://actions.google.com/sounds/v1/notifications/beep.ogg').play(); }
-        function playC() { new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play(); }
-        function playD() { new Audio('https://actions.google.com/sounds/v1/notifications/notification_low_intensity.ogg').play(); }
-        function playE() { new Audio('https://actions.google.com/sounds/v1/notifications/notification_high_intensity.ogg').play(); }
+        function playB() { 
+            playTone(660, 0.1); 
+            setTimeout(() => playTone(880, 0.15), 100); 
+        }
+        
+        function playC() { 
+            playTone(523.25, 0.15, 0.1); // C5
+            setTimeout(() => playTone(659.25, 0.3, 0.1), 150); // E5
+        }
+        
+        function playD() { playTone(220, 0.3, 0.15); }
+        
+        function playE() { 
+            playTone(1200, 0.05, 0.05); 
+            setTimeout(() => playTone(1500, 0.05, 0.05), 80); 
+        }
+        
+        function playF() { playTone(330, 0.05, 0.05, 'square'); }
     </script>
 </body>
 </html>
