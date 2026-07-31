@@ -1274,7 +1274,7 @@ function generateReport() {
       } catch (localErr) {
         rs.textContent = '⏳ 本地引擎未啟動，切換至 GAS 雲端模式...';
         usedBackend = 'gas';
-        var gasUrl = 'https://script.google.com/macros/s/AKfycbyMPfW-Z8S6k2mF3I8_h4W_D5L_X_yG_C6G_zB-1UfGzX_zB_G_C6G/exec';
+        var gasUrl = 'https://script.google.com/macros/s/AKfycbyIZO0kmJ9i3o9wmqWHLVHy1O7RiXAdpnrib98OmdPhgCfRKhhYc3xl2TyTIrn0Y9Rv/exec';
         var gasPayload = Object.assign({ action: 'generate_v7_report' }, payload);
         await fetch(gasUrl, {
           method: 'POST',
