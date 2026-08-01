@@ -1021,7 +1021,7 @@ function autoUploadPhotos() {
   }
   if (toUpload.length === 0) return;
 
-  fetch('https://script.google.com/macros/s/AKfycbzho8A6VCi5YqqzqrYLE-U92CWNenlGiSrjG8UbpsO-YjedI1i4L4tY_0SMciN08zjT/exec?action=upload', {
+  fetch('https://script.google.com/macros/s/AKfycbz2FxHTBzEpHB_i4y6G8K0HV74ATMrVPubqWdRDViadFA4TWcjhERzAtbyvsCpd7JTI/exec?action=upload', {
     method: 'POST',
     body: JSON.stringify({photos: toUpload})
   }).then(function(r){ return r.json(); })
@@ -1052,7 +1052,7 @@ function shareAll() {
     return;
   }
 
-  fetch('https://script.google.com/macros/s/AKfycbzho8A6VCi5YqqzqrYLE-U92CWNenlGiSrjG8UbpsO-YjedI1i4L4tY_0SMciN08zjT/exec?action=upload', {
+  fetch('https://script.google.com/macros/s/AKfycbz2FxHTBzEpHB_i4y6G8K0HV74ATMrVPubqWdRDViadFA4TWcjhERzAtbyvsCpd7JTI/exec?action=upload', {
     method: 'POST',
     body: JSON.stringify({photos: photos})
   }).then(function(r){ return r.json(); })
@@ -1274,7 +1274,7 @@ function generateReport() {
       } catch (localErr) {
         rs.textContent = '⏳ 本地引擎未啟動，切換至 GAS 雲端模式...';
         usedBackend = 'gas';
-        var gasUrl = 'https://script.google.com/macros/s/AKfycbzho8A6VCi5YqqzqrYLE-U92CWNenlGiSrjG8UbpsO-YjedI1i4L4tY_0SMciN08zjT/exec';
+        var gasUrl = 'https://script.google.com/macros/s/AKfycbz2FxHTBzEpHB_i4y6G8K0HV74ATMrVPubqWdRDViadFA4TWcjhERzAtbyvsCpd7JTI/exec';
         var gasPayload = Object.assign({ action: 'generate_v7_report' }, payload);
         await fetch(gasUrl, {
           method: 'POST',
