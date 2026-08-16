@@ -1283,7 +1283,8 @@ function fitZoom() {
   var aw = (ct && ct.clientWidth) || 300, ah = (ct && ct.clientHeight) || 300;
   var z = Math.min(aw/_cv.width, ah/_cv.height) * 0.97;
   z = Math.max(z, 0.05);
-  _cv.setViewportTransform([z,0,0,z,0,0]);
+  var tx = (aw - _cv.width * z) / 2, ty = (ah - _cv.height * z) / 2;
+  _cv.setViewportTransform([z,0,0,z,tx,ty]);
   _cv.renderAll();
 }
 
@@ -1301,7 +1302,7 @@ function initEditor(url, cid) {
   var ct = document.getElementById(cid); ct.innerHTML = '';
   var img = new Image();
   img.onload = function() {
-    var W = img.width, H = img.height, s = 1, MAX = 1600;
+    var W = img.width, H = img.height, s = 1, MAX = 2400;
     if (W > MAX || H > MAX) {
       s = Math.min(MAX/W, MAX/H);
       W = Math.round(W*s); H = Math.round(H*s);
@@ -1363,21 +1364,25 @@ function bindEditorEvents(el) {
   editorColor.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.color = this.value; };
   editorSize.oninput = function() { if (_cv && _cv.isDrawingMode) _cv.freeDrawingBrush.width = +this.value / currentZoom(); };
   // 雙指縮放
-  el.addEventListener('touchstart', function(e){
+  var we = _cv.wrapperEl || _cv.upperCanvasEl || el;
+  we.addEventListener('touchstart', function(e){
     if (e.touches.length === 2) {
+      e.preventDefault(); e.stopPropagation();
       _pinch = { d: Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY), z: currentZoom() };
     }
-  }, {passive:true});
-  el.addEventListener('touchmove', function(e){
+  }, {passive:false, capture:true});
+  we.addEventListener('touchmove', function(e){
     if (_pinch && e.touches.length === 2) {
-      e.preventDefault();
+      e.preventDefault(); e.stopPropagation();
       var d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
       var z = Math.min(Math.max(_pinch.z * d/_pinch.d, 0.1), 8);
       var p = _cv.getPointer({ clientX:(e.touches[0].clientX+e.touches[1].clientX)/2, clientY:(e.touches[0].clientY+e.touches[1].clientY)/2 });
       setZoomAt(p.x, p.y, z);
     }
-  }, {passive:false});
-  el.addEventListener('touchend', function(){ _pinch = null; });
+  }, {passive:false, capture:true});
+  we.addEventListener('touchend', function(e){
+    if (_pinch) { _pinch = null; e.stopPropagation(); }
+  }, {capture:true});
 }
 
 function setTool(t) {
@@ -1454,7 +1459,7 @@ function doneEditing() {
     _cv.setViewportTransform([1,0,0,1,0,0]);
     _cv.renderAll();
   }
-  _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.92 });
+  _pendingDataUrl = _cv.toDataURL({ format:'jpeg', quality:0.95 });
   closeEditor();
   // Show preview again with the edited image, then auto-keep
   document.getElementById('previewImage').src = _pendingDataUrl;
@@ -1472,7 +1477,7 @@ function applyCrop(cb) {
   if (!_cv || !_cr) { if (cb) cb(); return; }
   var r = _cr.getBoundingRect(true);
   _cr.visible = false; _cv.renderAll();
-  var url = _cv.toDataURL({format:'jpeg',quality:0.92});
+  var url = _cv.toDataURL({format:'jpeg',quality:0.95});
   _cr.visible = true; _cv.renderAll();
   var img = new Image();
   img.onload = function() {
@@ -1481,7 +1486,7 @@ function applyCrop(cb) {
     tc.getContext('2d').drawImage(img, Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height), 0, 0, Math.round(r.width), Math.round(r.height));
     _cv.remove(_cr); _cr = null;
     _cv.clear(); _cv.setWidth(r.width); _cv.setHeight(r.height);
-    fabric.Image.fromURL(tc.toDataURL('image/jpeg',0.92), function(fi) {
+    fabric.Image.fromURL(tc.toDataURL('image/jpeg',0.95), function(fi) {
       fi.set({ scaleX:1, scaleY:1, originX:'center', originY:'center', left:r.width/2, top:r.height/2 });
       _cv.setBackgroundImage(fi, function(){ _cv.renderAll(); _hist = []; saveState(); if (cb) cb(); });
     });
