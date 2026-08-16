@@ -309,7 +309,6 @@
     <button class="tool-btn" onclick="addText()">📝</button>
     <button class="tool-btn" onclick="setTool('circle')" id="btnCircle">⭕</button>
     <button class="tool-btn" onclick="setTool('rect')" id="btnRect">□</button>
-    <button class="tool-btn" onclick="setTool('crop')" id="btnCrop">✂️</button>
     <button class="tool-btn" onclick="toggleStickerPanel()" id="btnSticker">🏷️</button>
     <button class="tool-btn" onclick="undo()">↩️</button>
     <div class="tool-controls">
@@ -1219,11 +1218,11 @@ function beep() {
 // ============================================================
 // FABRIC.JS EDITOR (from V2)
 // ============================================================
-var _cv = null, _hist = [], _ds = null, _cr = null, _tool = null, _ts = null, _bgUrl = null, _pinch = null;
-var _tb = { pen:'btnPen', line:'btnLine', arrow:'btnArrow', circle:'btnCircle', rect:'btnRect', crop:'btnCrop' };
+var _cv = null, _hist = [], _ds = null, _tool = null, _ts = null, _bgUrl = null, _pinch = null;
+var _tb = { pen:'btnPen', line:'btnLine', arrow:'btnArrow', circle:'btnCircle', rect:'btnRect' };
 var _stickerCat = 'dirt';
 var STICKERS = {
-  dirt: ['集油溝槽積垢', '滴油孔堵塞'],
+  dirt: ['集油溝槽積垢', '滴油孔堵塞', '油煙道清潔口積垢'],
   clean: ['清潔前', '清潔後']
 };
 
@@ -1328,9 +1327,9 @@ function bindEditorEvents(el) {
     ev.path.set({ selectable:false, evented:false }); saveState();
   });
   _cv.on('text:editing:exited', saveState);
-  _cv.on('mouse:down', function(opt) { if (!_ds && 'line,circle,rect,crop'.indexOf(_tool) >= 0) _ds = _cv.getPointer(opt.e); });
+  _cv.on('mouse:down', function(opt) { if (!_ds && 'line,circle,rect'.indexOf(_tool) >= 0) _ds = _cv.getPointer(opt.e); });
   _cv.on('mouse:move', function(opt) {
-    if (!_ds || 'line,circle,rect,crop'.indexOf(_tool) < 0) return;
+    if (!_ds || 'line,circle,rect'.indexOf(_tool) < 0) return;
     var p = _cv.getPointer(opt.e), c = editorColor.value, sz = +editorSize.value / currentZoom();
     var dx = p.x - _ds.x, dy = p.y - _ds.y;
     if (_ts) _cv.remove(_ts);
@@ -1338,25 +1337,23 @@ function bindEditorEvents(el) {
       case 'line': _ts = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,selectable:false,evented:false,opacity:.6}); break;
       case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); _ts = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:Math.max(side/2,5),ry:Math.max(side/2,5),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false,opacity:.6}); break;
       case 'rect': _ts = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.max(Math.abs(dx),5),height:Math.max(Math.abs(dy),5),fill:'transparent',stroke:c,strokeWidth:sz,selectable:false,evented:false,opacity:.6}); break;
-      case 'crop': _ts = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.max(Math.abs(dx),5),height:Math.max(Math.abs(dy),5),fill:'rgba(255,255,255,0.08)',stroke:'#ff8906',strokeWidth:2/currentZoom(),strokeDashArray:[6,4],selectable:false,evented:false,opacity:.6}); break;
     }
     if (_ts) _cv.add(_ts), _cv.renderAll();
   });
   _cv.on('mouse:up', function(opt) {
-    if (!_ds || 'line,circle,rect,crop'.indexOf(_tool) < 0) return;
+    if (!_ds || 'line,circle,rect'.indexOf(_tool) < 0) return;
     if (_ts) _cv.remove(_ts), _ts = null;
     var p = _cv.getPointer(opt.e), dx = p.x - _ds.x, dy = p.y - _ds.y;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) { _ds = null; return; }
     var c = editorColor.value, sz = +editorSize.value / currentZoom(), sh;
     switch (_tool) {
-      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,strokeUniform:true,selectable:true,evented:true}); break;
-      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,strokeUniform:true,selectable:true,evented:true}); break;
-      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,strokeUniform:true,selectable:true,evented:true}); break;
-      case 'crop': if (_cr){_cv.remove(_cr);if(_hist.length>1)_hist.pop();} sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'rgba(255,255,255,0.08)',stroke:'#ff8906',strokeWidth:2/currentZoom(),strokeDashArray:[6,4],hasRotatingPoint:false,selectable:true,evented:true}); _cr = sh; break;
+      case 'line': sh = new fabric.Line([_ds.x,_ds.y,p.x,p.y],{stroke:c,strokeWidth:sz,strokeUniform:true,selectable:false,evented:false}); break;
+      case 'circle': var side=Math.max(Math.abs(dx),Math.abs(dy)); sh = new fabric.Ellipse({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),rx:side/2,ry:side/2,fill:'transparent',stroke:c,strokeWidth:sz,strokeUniform:true,selectable:false,evented:false}); break;
+      case 'rect': sh = new fabric.Rect({left:Math.min(_ds.x,p.x),top:Math.min(_ds.y,p.y),width:Math.abs(dx),height:Math.abs(dy),fill:'transparent',stroke:c,strokeWidth:sz,strokeUniform:true,selectable:false,evented:false}); break;
     }
     _ds = null; if (sh) _cv.add(sh), saveState();
     if (sh && (_tool === 'line' || _tool === 'circle' || _tool === 'rect')) {
-      _tool = null; _cv.selection = true; _cv.setActiveObject(sh); _cv.renderAll();
+      _tool = null; _cv.selection = true; _cv.renderAll();
       var bs = document.querySelectorAll('.tool-btn');
       for (var bi = 0; bi < bs.length; bi++) bs[bi].classList.remove('active');
     }
@@ -1393,10 +1390,9 @@ function setTool(t) {
   var el = document.getElementById(_tb[t]); if (el) el.classList.add('active');
   var dr = t === 'pen' || t === 'arrow';
   _cv.isDrawingMode = dr;
-  _cv.selection = !dr && 'line,circle,rect,crop'.indexOf(t) < 0;
+  _cv.selection = !dr && 'line,circle,rect'.indexOf(t) < 0;
   if (dr) { _cv.freeDrawingBrush.width = +editorSize.value / currentZoom(); _cv.freeDrawingBrush.color = editorColor.value; }
-  if (t === 'crop' && _cr) { _cv.remove(_cr); _cr = null; }
-  if (t && t !== 'crop') _cv.discardActiveObject();
+  if (t) _cv.discardActiveObject();
 }
 
 function addArrow(ev) {
@@ -1431,12 +1427,11 @@ function saveState() {
 
 function undo() {
   if (!_cv || _hist.length <= 1) return;
-  if (_cr) { _cv.remove(_cr); _cr = null; }
   _hist.pop();
   var bg = _bgUrl;
   _cv.loadFromJSON(JSON.parse(_hist[_hist.length-1]), function() {
     _cv.getObjects().forEach(function(o){
-      if (o.type === 'path' || o.type === 'triangle') o.set({ selectable:false, evented:false });
+      if (o.type === 'path' || o.type === 'triangle' || o.type === 'line' || o.type === 'ellipse' || o.type === 'rect') o.set({ selectable:false, evented:false });
     });
     if (bg && !_cv.backgroundImage) {
       var w = _cv.width, h = _cv.height;
@@ -1450,7 +1445,6 @@ function undo() {
 
 function saveEditor() {
   if (!_cv) return;
-  if (_cr) { applyCrop(function(){ doneEditing(); }); return; }
   doneEditing();
 }
 
@@ -1469,29 +1463,8 @@ function doneEditing() {
 
 function closeEditor() {
   if (_cv) _cv.dispose();
-  _cv = null; _hist = []; _ds = null; _cr = null; _tool = null; _ts = null; _bgUrl = null; _pinch = null;
+  _cv = null; _hist = []; _ds = null; _tool = null; _ts = null; _bgUrl = null; _pinch = null;
   document.getElementById('editor-overlay').classList.remove('active');
-}
-
-function applyCrop(cb) {
-  if (!_cv || !_cr) { if (cb) cb(); return; }
-  var r = _cr.getBoundingRect(true);
-  _cr.visible = false; _cv.renderAll();
-  var url = _cv.toDataURL({format:'jpeg',quality:0.95});
-  _cr.visible = true; _cv.renderAll();
-  var img = new Image();
-  img.onload = function() {
-    var tc = document.createElement('canvas');
-    tc.width = Math.round(r.width); tc.height = Math.round(r.height);
-    tc.getContext('2d').drawImage(img, Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height), 0, 0, Math.round(r.width), Math.round(r.height));
-    _cv.remove(_cr); _cr = null;
-    _cv.clear(); _cv.setWidth(r.width); _cv.setHeight(r.height);
-    fabric.Image.fromURL(tc.toDataURL('image/jpeg',0.95), function(fi) {
-      fi.set({ scaleX:1, scaleY:1, originX:'center', originY:'center', left:r.width/2, top:r.height/2 });
-      _cv.setBackgroundImage(fi, function(){ _cv.renderAll(); _hist = []; saveState(); if (cb) cb(); });
-    });
-  };
-  img.src = url;
 }
 
 // ============================================================
