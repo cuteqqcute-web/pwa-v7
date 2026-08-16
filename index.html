@@ -342,11 +342,11 @@ var DG = {
   kitchen:['高效預熱機/保溫箱','炸雞保溫箱','高效能麵包機'],
   fryer:['炸爐(炸區&炸雞區)','炸爐(薯站)'],
   pan:['煎爐'],
-  cold:['煎區肉櫃冰箱','炸區掛式(左)','工作檯冰箱/炸區掛式(右)','調理台下方冰箱','服務區冷藏冰箱','冷凍庫','冷藏庫','冷凍薯條分配器','聖代機','製冰機'],
+  cold:['煎區肉櫃冰箱','炸區左掛式','炸區右掛式','左工作台冰箱','右工作台冰箱','左直立式雙門冰箱','右直立式雙門冰箱','調理台下方冰箱','服務區冷藏冰箱','冷凍庫','冷藏庫','冷凍薯條分配器','聖代機','製冰機'],
   outdoor:['HVAC 室外機','HVAC 溫控檢視','HVAC 濾網','室外機 冷凍冷藏製冰飲料'],
   drainwash:['排煙設備','截油槽','截油分配器','陰井','清洗機'],
   safety:['CO2 偵測器','瓦斯遮斷閥','開罐器','蕃茄切片器'],
-  other:['其他','資料整理','病媒','照明&廚房設備']
+  other:['病媒','照明&廚房設備','其他','資料整理']
 };
 
 var DGS = [
@@ -364,8 +364,12 @@ var AT = {
   '炸爐(薯站)':[{label:'瓦斯漏氣',severity:'critical'},{label:'油煙道清潔口積垢',severity:'medium'},{label:'炸爐與油煙罩未密合',severity:'medium'},{label:'排風管四周積垢',severity:'medium'},{label:'排風管內積垢',severity:'high'},{label:'油煙罩清潔口積垢',severity:'medium'},{label:'油網髒污',severity:'medium'},{label:'油網扣鎖鬆脫',severity:'medium'},{label:'缺油網扣鎖',severity:'medium'},{label:'集油溝槽積垢',severity:'medium'},{label:'集油溝槽積油',severity:'medium'},{label:'滴油孔堵塞',severity:'medium'},{label:'滴油孔四周積垢',severity:'medium'},{label:'滴油壺未清',severity:'medium'},{label:'缺滴油壺',severity:'medium'},{label:'背板積垢',severity:'high'},{label:'大金剛斷裂',severity:'high'},{label:'大金剛後方積垢',severity:'medium'},{label:'輪腳未鎖',severity:'medium'},{label:'未推至定位',severity:'medium'},{label:'密封條破損',severity:'medium'},{label:'缺密封條',severity:'medium'}],
   '煎爐':[{label:'瓦斯管問題',severity:'high'},{label:'煙罩效能不足',severity:'high'},{label:'煎爐未貼合油煙罩',severity:'medium'},{label:'油煙道清潔口積垢',severity:'medium'},{label:'油網扣鎖鬆脫',severity:'medium'},{label:'油網積垢',severity:'medium'},{label:'集油溝槽積垢',severity:'medium'},{label:'滴油孔堵塞',severity:'medium'},{label:'滴油孔四周積垢',severity:'medium'},{label:'滴油壺未清',severity:'medium'},{label:'背板積垢',severity:'medium'},{label:'背板內部積油',severity:'medium'},{label:'煎爐後方多處積垢',severity:'medium'},{label:'抬板積垢',severity:'medium'},{label:'輪腳未鎖',severity:'medium'},{label:'輪腳無法鎖定',severity:'high'},{label:'輪腳滑軌積油垢嚴重',severity:'high'},{label:'密封條破損',severity:'high'}],
   '煎區肉櫃冰箱':[{label:'上蓋未密合',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'滴水盤積水',severity:'medium'}],
-  '炸區掛式(左)':[{label:'門墊圈破損',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
-  '工作檯冰箱/炸區掛式(右)':[{label:'門墊圈破損',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
+  '炸區左掛式':[{label:'門墊圈破損/氣密不足',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
+  '炸區右掛式':[{label:'門墊圈破損/氣密不足',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
+  '左工作台冰箱':[{label:'門墊圈破損/氣密不足',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
+  '右工作台冰箱':[{label:'門墊圈破損/氣密不足',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
+  '左直立式雙門冰箱':[{label:'門墊圈破損/氣密不足',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
+  '右直立式雙門冰箱':[{label:'門墊圈破損/氣密不足',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片積油垢',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
   '調理台下方冰箱':[{label:'門墊圈破損',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'濾網髒污',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'滴水盤積水',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
   '服務區冷藏冰箱':[{label:'門墊圈破損',severity:'high'},{label:'墊圈變形導致無法緊密',severity:'medium'},{label:'墊圈脫落',severity:'medium'},{label:'鰭片髒污',severity:'medium'},{label:'鰭片歪斜',severity:'medium'},{label:'保溫棉失效',severity:'medium'}],
   '冷凍庫':[{label:'門墊圈破損',severity:'high'},{label:'門墊圈積垢',severity:'medium'},{label:'鰭片結冰',severity:'high'},{label:'膨脹閥四周結大冰',severity:'high'},{label:'鰭片積灰',severity:'medium'},{label:'保溫棉破損',severity:'high'},{label:'貨物堆疊不當',severity:'medium'},{label:'門簾順序錯誤',severity:'medium'}],
