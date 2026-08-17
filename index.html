@@ -144,6 +144,7 @@
 
     .report-status{margin-top:8px;text-align:center;font-size:.875rem;display:none;padding:10px;border-radius:8px}
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 </head>
 <body>
@@ -170,6 +171,12 @@
 
     <div class="result" id="result">
       <span class="placeholder">尚未選擇</span>
+    </div>
+
+    <div id="v8ResumeBox" style="display:none;margin-top:16px;">
+      <p id="v8ResumeInfo" style="font-size:.75rem;color:#aeaeb2;margin:0 0 8px;"></p>
+      <button class="btn btn-primary" style="width:100%;font-family:inherit;" onclick="v8Resume()">▶️ 繼續上次的工作</button>
+      <button class="btn" style="width:100%;margin-top:8px;font-family:inherit;" onclick="v8Discard()">🗑️ 捨棄上次資料</button>
     </div>
 
     <footer>pwa-v6</footer>
@@ -289,6 +296,7 @@
 
     <div class="export-actions" id="exportActions" style="display:flex;">
       <button class="export-btn share" id="saveToAlbumBtn">💾 儲存到手機相簿</button>
+      <button class="export-btn save" id="v8ExportBtn" style="flex:1;" onclick="v8Export()">📦 匯出資料包</button>
     </div>
     <div class="export-actions" id="reportActions" style="display:flex;">
       <button class="export-btn" id="generateReportBtn" style="background:#ff9500;flex:1;">📊 產出日巡報告</button>
@@ -542,6 +550,7 @@ function keepPhoto() {
     _currentPhotoIdx = _photos.length - 1;
     goToPage(3);
   }
+  v8Save();
 }
 
 function tossPhoto() {
@@ -561,6 +570,7 @@ function deletePhoto(idx) {
   if (confirm('確定刪除這張照片？')) {
     _photos.splice(idx, 1);
     renderPhotoGrid();
+    v8Save();
   }
 }
 
@@ -900,12 +910,8 @@ function confirmClassify() {
   var previewBtn = document.getElementById('goToPreviewBtn');
   previewBtn.style.display = allDone ? 'block' : 'none';
 
-  // Auto-upload every photo immediately after classification
-  var unuploaded = 0;
-  for (var j = 0; j < _photos.length; j++) {
-    if (_photos[j].classified && !_photos[j].uploaded) unuploaded++;
-  }
-  if (unuploaded >= 1) autoUploadPhotos();
+  // V8: 資料只存本機，不上傳雲端
+  v8Save();
 }
 
 // V6: Hide all classification sub-pages
@@ -1019,28 +1025,131 @@ function genFN(dn, al, seq) {
 // ============================================================
 // SHARE & SAVE (from V2)
 // ============================================================
-// Auto-upload: silently upload classified photos to Drive in background
-function autoUploadPhotos() {
-  var toUpload = [];
-  for (var i = 0; i < _photos.length; i++) {
-    if (_photos[i].classified && !_photos[i].uploaded) {
-      var b64 = _photos[i].dataUrl.split(',')[1];
-      toUpload.push({fileName: _photos[i].fileName, data: b64});
+// ============================================================
+// V8: 本機儲存（資料不進雲端，存在手機/電腦自己裝置）
+// ============================================================
+var v8DB = null;
+function v8Open() {
+  return new Promise(function(res, rej) {
+    if (v8DB) return res(v8DB);
+    var req = indexedDB.open('pwa-v8', 1);
+    req.onupgradeneeded = function() {
+      var db = req.result;
+      if (!db.objectStoreNames.contains('sessions')) db.createObjectStore('sessions');
+    };
+    req.onsuccess = function() { v8DB = req.result; res(v8DB); };
+    req.onerror = function() { rej(req.error); };
+  });
+}
+function v8Save() {
+  if (!_photos.length && !_restaurant) return;
+  v8Open().then(function(db) {
+    db.transaction('sessions', 'readwrite').objectStore('sessions').put({
+      restaurant: _restaurant,
+      photos: _photos,
+      photoSeq: _photoSeq,
+      updatedAt: new Date().getTime()
+    }, 'current');
+  }).catch(function(){});
+}
+function v8LoadSession() {
+  return v8Open().then(function(db) {
+    return new Promise(function(res, rej) {
+      var rq = db.transaction('sessions').objectStore('sessions').get('current');
+      rq.onsuccess = function() { res(rq.result || null); };
+      rq.onerror = function() { rej(rq.error); };
+    });
+  });
+}
+function v8ClearSession() {
+  return v8Open().then(function(db) {
+    return new Promise(function(res, rej) {
+      var rq = db.transaction('sessions', 'readwrite').objectStore('sessions').delete('current');
+      rq.onsuccess = function() { res(); };
+      rq.onerror = function() { rej(rq.error); };
+    });
+  });
+}
+function v8CheckResume() {
+  v8LoadSession().then(function(s) {
+    if (!s || !s.photos || !s.photos.length) return;
+    var box = document.getElementById('v8ResumeBox');
+    if (!box) return;
+    var d = new Date(s.updatedAt);
+    var ds = d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate() + ' ' +
+      String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    var nm = s.restaurant ? (s.restaurant.code + ' ' + s.restaurant.name) : '未選餐廳';
+    document.getElementById('v8ResumeInfo').textContent = nm + '｜' + s.photos.length + ' 張照片｜' + ds;
+    box.style.display = 'block';
+  }).catch(function(){});
+}
+function v8Resume() {
+  v8LoadSession().then(function(s) {
+    if (!s) return;
+    _restaurant = s.restaurant || null;
+    _photos = s.photos || [];
+    _photoSeq = s.photoSeq || _photos.length;
+    var sel = document.getElementById('restaurantSelect');
+    if (_restaurant) {
+      sel.value = _restaurant.code;
+      document.getElementById('result').innerHTML =
+        '<span class="selected">' + _restaurant.name + '</span><span class="code">' + _restaurant.code + '</span>';
     }
+    document.getElementById('v8ResumeBox').style.display = 'none';
+    goToPage(2);
+    renderPhotoGrid();
+  }).catch(function(){});
+}
+function v8Discard() {
+  if (!confirm('確定捨棄上次的工作資料？此動作無法復原。')) return;
+  v8ClearSession().then(function() {
+    document.getElementById('v8ResumeBox').style.display = 'none';
+  });
+}
+function v8DataUrlToBlob(dataUrl) {
+  var parts = dataUrl.split(',');
+  var mime = (parts[0].match(/data:(.*?);/) || [,'image/jpeg'])[1];
+  var bin = atob(parts[1]);
+  var arr = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+function v8Export() {
+  if (!_photos.length) { alert('尚無照片可匯出'); return; }
+  var zip = new JSZip();
+  var manifest = {
+    app: 'pwa-v8', version: 1, exportedAt: new Date().toISOString(),
+    restaurant: _restaurant,
+    photoSeq: _photoSeq,
+    photos: []
+  };
+  for (var i = 0; i < _photos.length; i++) {
+    var p = _photos[i];
+    var fn = p.fileName || ('photo_' + String(i+1).padStart(3,'0') + '.jpg');
+    manifest.photos.push({
+      fileName: fn,
+      groupKey: p.groupKey, groupLabel: p.groupLabel,
+      device: p.device, abnormal: p.abnormal, classified: p.classified
+    });
+    zip.file('photos/' + fn, v8DataUrlToBlob(p.dataUrl));
   }
-  if (toUpload.length === 0) return;
-
-  fetch('https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec?action=upload', {
-    method: 'POST',
-    body: JSON.stringify({photos: toUpload})
-  }).then(function(r){ return r.json(); })
-    .then(function(d){
-      if (d.success) {
-        for (var j = 0; j < _photos.length; j++) {
-          if (_photos[j].classified && !_photos[j].uploaded) _photos[j].uploaded = true;
-        }
-      }
-    }).catch(function(){ /* silent fail, user can manually save */ });
+  zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+  zip.generateAsync({ type: 'blob' }).then(function(blob) {
+    var code = _restaurant ? _restaurant.code : 'UNKN';
+    var now = new Date();
+    var ds = now.toISOString().slice(0,10).replace(/-/g,'');
+    var name = code + '_日巡資料_' + ds + '.zip';
+    if (navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: 'application/zip' })] })) {
+      navigator.share({ files: [new File([blob], name, { type: 'application/zip' })], title: name })
+        .catch(function(err){ if (err && err.name !== 'AbortError') alert('分享失敗：' + err.message); });
+    } else {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+    }
+  });
 }
 
 function saveToAlbum() {
@@ -1118,70 +1227,9 @@ function generateReport() {
   var btn = document.getElementById('generateReportBtn');
   var rs = document.getElementById('reportStatus');
   rs.style.display = 'block';
-  rs.style.color = '#86868b';
-  rs.style.background = '#f9f9fb';
-  rs.textContent = '⏳ 報告產生中（約 2-3 分鐘），完成後有提示音...';
-  btn.disabled = true;
-  btn.style.opacity = '0.5';
-  btn.textContent = '⏳ 產生中...';
-  fetch('https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (d && d.success && d.started) {
-        pollReportStatus();
-      } else if (d && d.success) {
-        showReportSuccess(d);
-      } else {
-        resetReportBtn();
-        rs.style.color = '#dc3545';
-        rs.style.background = '#fff0f0';
-        rs.textContent = '❌ 報告產出失敗：' + (d && d.error ? d.error : '未知錯誤');
-      }
-    })
-    .catch(function(){
-      // 連線被 Google 切斷（GAS 執行超過等待上限）— GAS 後端仍在跑，改為輪詢狀態
-      pollReportStatus();
-    });
-}
-
-function pollReportStatus() {
-  var rs = document.getElementById('reportStatus');
-  var tries = 0;
-  var timer = setInterval(function() {
-    fetch('https://script.google.com/macros/s/AKfycbyo718PNpQRfjmiBjCQNyIBibgkUTLgM-mEM95HJwWOg-2h6-rK4uffvJ5sbMw3PsV5/exec?action=status')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (d && d.done && d.reportUrl) {
-          clearInterval(timer);
-          showReportSuccess(d);
-        } else if (d && d.done && d.error) {
-          clearInterval(timer);
-          resetReportBtn();
-          rs.style.color = '#dc3545';
-          rs.style.background = '#fff0f0';
-          rs.textContent = '❌ 報告產出失敗：' + d.error;
-        } else {
-          tries++;
-          if (tries >= 30) {
-            clearInterval(timer);
-            resetReportBtn();
-            rs.style.color = '#b7791f';
-            rs.style.background = '#fffbeb';
-            rs.textContent = '⚠️ 等待超過 10 分鐘，請到雲端硬碟確認檔案';
-          }
-        }
-      })
-      .catch(function(){
-        tries++;
-        if (tries >= 30) {
-          clearInterval(timer);
-          resetReportBtn();
-          rs.style.color = '#b7791f';
-          rs.style.background = '#fffbeb';
-          rs.textContent = '⚠️ 等待超過 10 分鐘，請到雲端硬碟確認檔案';
-        }
-      });
-  }, 20000);
+  rs.style.color = '#b7791f';
+  rs.style.background = '#fffbeb';
+  rs.textContent = '⏳ V8 開發中：報告功能會在 Excel 模板加入後開放（目前可先使用「匯出資料包」）。';
 }
 
 function showReportSuccess(d) {
@@ -1489,6 +1537,7 @@ function setup() {
   if (_ini) return; _ini = true;
   initRestaurant();
   bindButtons();
+  v8CheckResume();
   // 防止瀏覽器返回手勢/返回鍵離開頁面（分類資料在記憶體，離開即遺失）
   history.pushState(null, null, location.href);
   window.addEventListener('popstate', function() {
