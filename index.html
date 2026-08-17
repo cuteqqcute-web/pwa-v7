@@ -1116,6 +1116,7 @@ function v8DataUrlToBlob(dataUrl) {
 }
 function v8Export() {
   if (!_photos.length) { alert('尚無照片可匯出'); return; }
+  if (typeof JSZip === 'undefined') { alert('打包工具未載入，請檢查網路後重新整理頁面再試'); return; }
   var zip = new JSZip();
   var manifest = {
     app: 'pwa-v8', version: 1, exportedAt: new Date().toISOString(),
@@ -1139,16 +1140,14 @@ function v8Export() {
     var now = new Date();
     var ds = now.toISOString().slice(0,10).replace(/-/g,'');
     var name = code + '_日巡資料_' + ds + '.zip';
-    if (navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: 'application/zip' })] })) {
-      navigator.share({ files: [new File([blob], name, { type: 'application/zip' })], title: name })
-        .catch(function(err){ if (err && err.name !== 'AbortError') alert('分享失敗：' + err.message); });
-    } else {
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
-    }
+    // 直接下載（手機/電腦都支援；不用分享功能避免被手機擋）
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 10000);
+  }).catch(function(err) {
+    alert('打包失敗：' + (err && err.message ? err.message : '未知錯誤') + '\n請再試一次。');
   });
 }
 
